@@ -75,6 +75,10 @@ typedef struct {
   union {
     uint64_t uinteger;
     int64_t integer;
+    struct {
+      uint64_t tag_value;
+      const uint8_t *child;
+    } tag;
     const uint8_t *string;
     const uint8_t *items;
   } value;
@@ -96,7 +100,9 @@ typedef struct ecbor_node ecbor_node_t;
 struct ecbor_node {
   ecbor_item_t item;
   ecbor_node_t *parent;
+  ecbor_node_t *child; /* first child */
   ecbor_node_t *next; /* next in array or map */
+  ecbor_node_t *prev; /* ditto */
   uint64_t index; /* index in array or map */
 };
 

@@ -371,7 +371,28 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
       break;
 
     case ECBOR_MT_TAG:
-      return ECBOR_ERR_CURRENTLY_NOT_SUPPORTED;
+      {
+        ecbor_error_t rc;
+
+        /* decode tag */
+        rc = ecbor_decode_uint (context, &item->value.tag.tag_value,
+                                &item->size, additional);
+        if (rc != ECBOR_OK) {
+          return rc;
+        }
+        
+        /* keep child pointer */
+        item->value.tag.child = context->in_position;
+        item->n_chunks = 1;
+        
+        if (context->mode != ECBOR_MODE_DECODE_STREAMED) {
+          ecbor_item_t child;
+
+          /* not in streamed mode; compute size so we can advance */
+          return ecbor_decode_next_internal (context, &child, false,
+                                             ECBOR_MT_UNDEFINED);
+        }
+      }
       break;
 
     case ECBOR_MT_SPECIAL:
@@ -394,7 +415,7 @@ ecbor_error_t
 ecbor_decode (ecbor_decode_context_t *context, ecbor_item_t *item)
 {
   ecbor_error_t rc = ECBOR_OK;
-  ecbor_node_t *curr_prev = NULL, *curr_parent = NULL, *curr_node = NULL;
+  ecbor_node_t *curr_node = NULL, *prev_node = NULL, *par_node = NULL;
   
   if (!context) {
     return ECBOR_ERR_NULL_CONTEXT;
@@ -426,16 +447,12 @@ ecbor_decode (ecbor_decode_context_t *context, ecbor_item_t *item)
       goto end;
     }
 
-    curr_prev = curr_node;
     curr_node = &context->nodes[context->n_nodes];
+    curr_node->next = NULL;
+    curr_node->prev = NULL;
+    curr_node->parent = NULL;
+    curr_node->child = NULL;
     context->n_nodes ++;
-    
-    if (curr_prev) {
-      curr_prev->next = curr_node;
-      curr_node->index = curr_prev->index + 1;
-    } else {
-      curr_node->index = 0;
-    }
 
     /* consume next item */
     rc = ecbor_decode_next_internal (context, &curr_node->item, false,
@@ -443,42 +460,76 @@ ecbor_decode (ecbor_decode_context_t *context, ecbor_item_t *item)
 
     /* handle end of indefinite */
     if (rc == ECBOR_END_OF_INDEFINITE) {
-      if ((!curr_parent)
-          || (curr_parent->item.major_type != ECBOR_MT_MAP
-              && curr_parent->item.major_type != ECBOR_MT_ARRAY)
-          || (!curr_parent->item.is_indefinite)) {
+      if ((!par_node)
+          || (par_node->item.major_type != ECBOR_MT_MAP
+              && par_node->item.major_type != ECBOR_MT_ARRAY)
+          || (!par_node->item.is_indefinite)) {
         /* we are not in an indefinite map or array */
         rc = ECBOR_ERR_INVALID_STOP_CODE;
         goto end;
       }
+      
+      if (par_node && par_node->item.major_type == ECBOR_MT_MAP
+          && prev_node && (prev_node->index % 2 == 0)) {
+        /* map must have even number of children */
+        rc = ECBOR_ERR_INVALID_KEY_VALUE_PAIR;
+        goto end;
+      }
 
       /* jump up one level */
-      curr_node = curr_parent;
-      curr_parent = curr_parent->parent;
+      curr_node = par_node;
+      par_node = curr_node->parent;
+      prev_node = curr_node->prev;
       
       /* ignore this item, reuse it later */
       context->n_nodes --;
       continue;
     }
     
-    /* handle new children */
-    if (curr_node->item.major_type == ECBOR_MT_MAP
-        || curr_node->item.major_type == ECBOR_MT_ARRAY) {
-      /* TODO */
-    }
-    
-    /* handle end of definite maps and arrays */
-    /* TODO */
-    
     /* check return code */
     if (rc == ECBOR_END_OF_BUFFER) {
-      if (!curr_parent) {
+      if (par_node) {
         /* we are not allowed to reach the end unless the item is top-level */
         rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
         goto end;
       }
     } else if (rc != ECBOR_OK) {
       goto end;
+    }
+    
+    /* link in tree */
+    if (prev_node) {
+      prev_node->next = curr_node;
+      curr_node->prev = prev_node;
+    }
+    if (par_node) {
+      curr_node->parent = par_node;
+      if (!prev_node) {
+        par_node->child = curr_node;
+      }
+    }
+    
+    /* handle new children */
+    if (curr_node->item.major_type == ECBOR_MT_MAP
+        || curr_node->item.major_type == ECBOR_MT_ARRAY
+        || curr_node->item.major_type == ECBOR_MT_TAG) {
+      /* jump a level down */
+      par_node = curr_node;
+      prev_node = NULL;
+      continue;
+    }
+    
+    /* handle end of definite maps and arrays, and tags */
+    while (par_node
+           && (par_node->item.major_type == ECBOR_MT_MAP
+               || par_node->item.major_type == ECBOR_MT_ARRAY
+               || par_node->item.major_type == ECBOR_MT_TAG)
+           && !par_node->item.is_indefinite
+           && par_node->item.n_chunks == (curr_node->index + 1)) {
+      /* parent has filled all items, jump a level up */
+      curr_node = par_node;
+      par_node = curr_node->parent;
+      prev_node = curr_node->prev;
     }
   }
 
