@@ -81,7 +81,7 @@ ecbor_initialize_decode_tree (ecbor_decode_context_t *context,
   }
   
   if (!node_buffer) {
-    return ECBOR_ERR_NULL_ITEM_BUFFER;
+    return ECBOR_ERR_NULL_NODE_BUFFER;
   }
   
   context->mode = ECBOR_MODE_DECODE_TREE;
@@ -405,6 +405,9 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
       break;
     
     default:
+      /* while this would theoretically be a case for invalid type, any 3 bit
+         value should be a valid type, so this branch is an internal error and
+         should never happen */
       return ECBOR_ERR_UNKNOWN;
   }
   
@@ -413,10 +416,7 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
 
 ecbor_error_t
 ecbor_decode (ecbor_decode_context_t *context, ecbor_item_t *item)
-{
-  ecbor_error_t rc = ECBOR_OK;
-  ecbor_node_t *curr_node = NULL, *prev_node = NULL, *par_node = NULL;
-  
+{  
   if (!context) {
     return ECBOR_ERR_NULL_CONTEXT;
   }
@@ -424,22 +424,34 @@ ecbor_decode (ecbor_decode_context_t *context, ecbor_item_t *item)
     return ECBOR_ERR_NULL_ITEM;
   }
 
-  if (context->mode == ECBOR_MODE_DECODE
-      || context->mode == ECBOR_MODE_DECODE_STREAMED) {
-    /* we just get the next item */
-    return ecbor_decode_next_internal (context, item, false, ECBOR_MT_UNDEFINED);
+  if (context->mode != ECBOR_MODE_DECODE
+      && context->mode != ECBOR_MODE_DECODE_STREAMED) {
+    /* context is for wrong mode */
+    return ECBOR_ERR_WRONG_MODE;
   }
   
-  /*
-   * decode whole tree
-   */
+  /* we just get the next item */
+  return ecbor_decode_next_internal (context, item, false, ECBOR_MT_UNDEFINED);
+}
+
+extern ecbor_error_t
+ecbor_decode_tree (ecbor_decode_context_t *context)
+{
+  ecbor_error_t rc = ECBOR_OK;
+  ecbor_node_t *curr_node = NULL, *prev_node = NULL, *par_node = NULL;
+  
+  if (!context) {
+    return ECBOR_ERR_NULL_CONTEXT;
+  }
+  
+  /* initialization */
   context->n_nodes = 0;
   
   /* step into streamed mode; some of the semantic checks will be done here */
   context->mode = ECBOR_MODE_DECODE_STREAMED;
 
-  /* consume until something happens */
-  while (true) {
+  /* consume until end of buffer or error */
+  while (rc != ECBOR_OK) {
 
     /* allocate new node */
     if (context->n_nodes >= context->node_capacity) {
@@ -453,7 +465,7 @@ ecbor_decode (ecbor_decode_context_t *context, ecbor_item_t *item)
     curr_node->parent = NULL;
     curr_node->child = NULL;
     context->n_nodes ++;
-
+    
     /* consume next item */
     rc = ecbor_decode_next_internal (context, &curr_node->item, false,
                                      ECBOR_MT_UNDEFINED);
@@ -480,6 +492,9 @@ ecbor_decode (ecbor_decode_context_t *context, ecbor_item_t *item)
       curr_node = par_node;
       par_node = curr_node->parent;
       prev_node = curr_node->prev;
+      
+      /* continue parsing */
+      rc = ECBOR_OK;
       
       /* ignore this item, reuse it later */
       context->n_nodes --;
@@ -536,5 +551,10 @@ ecbor_decode (ecbor_decode_context_t *context, ecbor_item_t *item)
 end:
   /* return to tree mode and return error code */
   context->mode = ECBOR_MODE_DECODE_TREE;
+  rc = (rc == ECBOR_END_OF_BUFFER ? ECBOR_OK : rc);
+  if (rc != ECBOR_OK) {
+    /* make sure we don't expose garbage to user */
+    context->n_nodes = 0;
+  }
   return rc;
 }

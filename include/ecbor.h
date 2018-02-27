@@ -22,23 +22,30 @@ typedef enum {
   ECBOR_ERR_NULL_CONTEXT                    = 10,
   ECBOR_ERR_NULL_INPUT_BUFFER               = 11,
   ECBOR_ERR_NULL_OUTPUT_BUFFER              = 12,
-  ECBOR_ERR_NULL_ITEM_BUFFER                = 13,
+  ECBOR_ERR_NULL_NODE_BUFFER                = 13,
+  ECBOR_ERR_NULL_VALUE                      = 14,
+  ECBOR_ERR_NULL_ARRAY                      = 15,
+  ECBOR_ERR_NULL_MAP                        = 16,
   
   ECBOR_ERR_NULL_ITEM                       = 20,
+  ECBOR_ERR_NULL_NODE                       = 21,
   
   ECBOR_ERR_WRONG_MODE                      = 30,
-  
+
   /* bounds errors */
   ECBOR_ERR_INVALID_END_OF_BUFFER           = 50,
   ECBOR_ERR_END_OF_NODE_BUFFER              = 51,
+  ECBOR_ERR_EMPTY_NODE_BUFFER               = 52,
+  ECBOR_ERR_INDEX_OUT_OF_BOUNDS             = 53,
   
-  /* syntax errors */
+  /* semantic errors */
   ECBOR_ERR_CURRENTLY_NOT_SUPPORTED         = 100,
   ECBOR_ERR_INVALID_ADDITIONAL              = 101,
   ECBOR_ERR_INVALID_CHUNK_MAJOR_TYPE        = 102,
   ECBOR_ERR_NESTET_INDEFINITE_STRING        = 103,
   ECBOR_ERR_INVALID_KEY_VALUE_PAIR          = 104,
   ECBOR_ERR_INVALID_STOP_CODE               = 105,
+  ECBOR_ERR_INVALID_TYPE                    = 106,
   
   /* control codes */
   ECBOR_END_OF_BUFFER                       = 200,
@@ -173,13 +180,81 @@ ecbor_initialize_decode_tree (ecbor_decode_context_t *context,
 
 
 /*
+ * Encoding routines
+ */
+
+
+/*
  * Decoding routines
  */
 extern ecbor_error_t
 ecbor_decode (ecbor_decode_context_t *context, ecbor_item_t *item);
 
+extern ecbor_error_t
+ecbor_decode_tree (ecbor_decode_context_t *context);
+
 /*
- * Encoding routines
+ * Tree API
  */
+extern ecbor_error_t
+ecbor_get_root (ecbor_decode_context_t *context, ecbor_node_t **root);
+
+/*
+ * Strict API
+ */
+extern ecbor_major_type_t
+ecbor_get_type (ecbor_item_t *item);
+
+extern ecbor_error_t
+ecbor_get_value (ecbor_item_t *item, void *value);
+
+extern ecbor_error_t
+ecbor_get_length (ecbor_item_t *item, uint64_t *length);
+
+extern ecbor_error_t
+ecbor_get_array_item (ecbor_item_t *array, uint64_t index,
+                      ecbor_item_t *arr_item);
+
+extern ecbor_error_t
+ecbor_get_map_item (ecbor_item_t *map, uint64_t index, ecbor_item_t *key,
+                    ecbor_item_t *value);
+
+extern ecbor_error_t
+ecbor_get_tag_item (ecbor_item_t *tag, ecbor_item_t *arr_item);
+
+
+/*
+ * Inline API
+ */
+#define ECBOR_GET_TYPE(i) \
+  ((i).major_type)
+
+#define ECBOR_IS_NINT(i) \
+  ((i).major_type == ECBOR_MT_NINT)
+#define ECBOR_IS_UINT(i) \
+  ((i).major_type == ECBOR_MT_UINT)
+#define ECBOR_IS_INTEGER(i) \
+  (ECBOR_IS_NINT(i) || ECBOR_IS_UINT(i))
+#define ECBOR_IS_BSTR(i) \
+  ((i).major_type == ECBOR_MT_BSTR)
+#define ECBOR_IS_STR(i) \
+  ((i).major_type == ECBOR_MT_STR)
+#define ECBOR_IS_ARRAY(i) \
+  ((i).major_type == ECBOR_MT_ARRAY)
+#define ECBOR_IS_MAP(i) \
+  ((i).major_type == ECBOR_MT_MAP)
+#define ECBOR_IS_TAG(i) \
+  ((i).major_type == ECBOR_MT_TAG)
+
+#define ECBOR_GET_INT(i) \
+  ((i).value.integer)
+#define ECBOR_GET_UINT(i) \
+  ((i).value.uinteger)
+#define ECBOR_GET_BSTR(i) \
+  ((i).value.string)
+#define ECBOR_GET_STR(i) \
+  ((i).value.string)
+#define ECBOR_GET_TAG(i) \
+  ((i).value.tag.tag_value)
 
 #endif
