@@ -37,6 +37,7 @@ typedef enum {
   ECBOR_ERR_END_OF_NODE_BUFFER              = 51,
   ECBOR_ERR_EMPTY_NODE_BUFFER               = 52,
   ECBOR_ERR_INDEX_OUT_OF_BOUNDS             = 53,
+  ECBOR_ERR_WONT_RETURN_INDEFINITE          = 54,
   
   /* semantic errors */
   ECBOR_ERR_CURRENTLY_NOT_SUPPORTED         = 100,
@@ -86,15 +87,21 @@ typedef struct {
       uint64_t tag_value;
       const uint8_t *child;
     } tag;
-    const uint8_t *string;
+    struct {
+      const uint8_t *str;
+      uint64_t n_chunks;
+    } string;
     const uint8_t *items;
   } value;
   
-  /* storage size of value, in bytes */
+  /* storage size (serialized) of item, in bytes */
   uint64_t size;
   
-  /* number of chunks in value, in case it is indefinite */
-  uint64_t n_chunks;
+  /* length of value; can mean different things:
+   *   - payload (value) size, in bytes, for ints and strings
+   *   - number of items in arrays and maps
+   */
+  uint64_t length;
   
   /* non-zero if size is indefinite (for strings, maps and arrays) */
   uint8_t is_indefinite;

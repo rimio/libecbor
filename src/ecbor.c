@@ -41,7 +41,10 @@ ecbor_get_value (ecbor_item_t *item, void *value)
 
     case ECBOR_MT_BSTR:
     case ECBOR_MT_STR:
-      *((uint8_t **)value) = (uint8_t *) item->value.string;
+      if (item->is_indefinite) {
+        return ECBOR_ERR_WONT_RETURN_INDEFINITE;
+      }
+      *((uint8_t **)value) = (uint8_t *) item->value.string.str;
       break;
 
     case ECBOR_MT_TAG:
@@ -68,15 +71,12 @@ ecbor_get_length (ecbor_item_t *item, uint64_t *length)
   switch (item->major_type) {
     case ECBOR_MT_BSTR:
     case ECBOR_MT_STR:
-      *length = item->size;
-      break;
-    
     case ECBOR_MT_ARRAY:
-      *length = item->n_chunks;
+      *length = item->length;
       break;
 
     case ECBOR_MT_MAP:
-      *length = item->n_chunks / 2;
+      *length = item->length / 2;
       break;
 
     default:
@@ -100,7 +100,7 @@ ecbor_get_array_item (ecbor_item_t *array, uint64_t index,
   if (array->major_type != ECBOR_MT_ARRAY) {
     return ECBOR_ERR_INVALID_TYPE;
   }
-  if (array->n_chunks <= index) {
+  if (array->length <= index) {
     return ECBOR_ERR_INDEX_OUT_OF_BOUNDS;
   }
   if (!item) {
@@ -140,7 +140,7 @@ ecbor_get_map_item (ecbor_item_t *map, uint64_t index, ecbor_item_t *key,
   if (map->major_type != ECBOR_MT_ARRAY) {
     return ECBOR_ERR_INVALID_TYPE;
   }
-  if (map->n_chunks <= (index * 2)) {
+  if (map->length <= (index * 2)) {
     return ECBOR_ERR_INDEX_OUT_OF_BOUNDS;
   }
   if (!key || !value) {
