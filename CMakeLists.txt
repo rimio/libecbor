@@ -2,6 +2,9 @@ cmake_minimum_required (VERSION 3.1)
 
 project (ecbor LANGUAGES C)
 
+# Options
+option (BUILD_DESCRIBE_TOOL "build ecbor-describe" ON)
+
 # Compiler setup
 set (CMAKE_C_STANDARD 99)
 
@@ -29,8 +32,8 @@ set (LIB_SOURCES
   "${SRC_DIR}/ecbor_decoder.c"
 )
 
-set (TOOL_SOURCES
-  # TODO
+set (DESCRIBE_TOOL_SOURCES
+  "${SRC_DIR}/ecbor_describe.c"
 )
 
 # Targets
@@ -41,3 +44,9 @@ set_target_properties (${PROJECT_NAME}_shared PROPERTIES OUTPUT_NAME ${PROJECT_N
 set_target_properties (${PROJECT_NAME}_static PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 
 target_compile_options (${PROJECT_NAME}_static PRIVATE -nostdlib)
+
+# Tool Targets
+if (BUILD_DESCRIBE_TOOL)
+  add_executable (${PROJECT_NAME}-describe ${DESCRIBE_TOOL_SOURCES})
+  target_link_libraries (${PROJECT_NAME}-describe ${PROJECT_NAME}_shared)
+endif (BUILD_DESCRIBE_TOOL)

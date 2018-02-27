@@ -112,7 +112,7 @@ ecbor_get_array_item (ecbor_item_t *array, uint64_t index,
     return rc;
   }
   
-  for (i = 0; i < index; i ++) {
+  for (i = 0; i < index+1; i ++) {
     rc = ecbor_decode (&context, item);
     if (rc != ECBOR_OK) {
       if (rc == ECBOR_END_OF_BUFFER) {
