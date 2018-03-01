@@ -58,38 +58,41 @@ typedef enum {
  */
 
 /*
- * CBOR major types
+ * CBOR types
  */
 typedef enum {
-  /* first type, used for bounds checking */
-  ECBOR_MT_FIRST      = 0,
-
-  /* Major types as defined in the RFC */
-  ECBOR_MT_UINT       = 0,
-  ECBOR_MT_NINT       = 1,
-  ECBOR_MT_BSTR       = 2,
-  ECBOR_MT_STR        = 3,
-  ECBOR_MT_ARRAY      = 4,
-  ECBOR_MT_MAP        = 5,
-  ECBOR_MT_TAG        = 6,
-  ECBOR_MT_SPECIAL    = 7, /* this will be translated to a custom type */
+  /* Unknown type */
+  ECBOR_TYPE_UNDEFINED  = -1,
   
-  /* Custom types */
-  ECBOR_MT_UNDEFINED  = -1,
-  ECBOR_MT_FP16       = 8,
-  ECBOR_MT_FP32       = 9,
-  ECBOR_MT_FP64       = 10,
+  /* First type, used for bounds checking */
+  ECBOR_TYPE_FIRST      = 0,
 
-  /* last code, used for bounds checking */
-  ECBOR_MT_LAST       = 10
-} ecbor_major_type_t;
+  /* Following types have a correspondent as a major type, as per RFC */
+  ECBOR_TYPE_UINT       = 0,
+  ECBOR_TYPE_NINT       = 1,
+  ECBOR_TYPE_BSTR       = 2,
+  ECBOR_TYPE_STR        = 3,
+  ECBOR_TYPE_ARRAY      = 4,
+  ECBOR_TYPE_MAP        = 5,
+  ECBOR_TYPE_TAG        = 6,
+  /* Major type #7 is not exposed, but translated in one of the following.
+   * We keep value 7 reserved so there is no confusion. */
+  
+  /* Following types are translated from major type #7 */
+  ECBOR_TYPE_FP16       = 8,
+  ECBOR_TYPE_FP32       = 9,
+  ECBOR_TYPE_FP64       = 10,
+
+  /* Last type, used for bounds checking */
+  ECBOR_TYPE_LAST       = 10
+} ecbor_type_t;
 
 /*
  * CBOR Item
  */
 typedef struct {
-  /* major type and additional info of item */
-  ecbor_major_type_t major_type;
+  /* item type */
+  ecbor_type_t type;
   
   /* value */
   union {
@@ -223,7 +226,7 @@ ecbor_get_root (ecbor_decode_context_t *context, ecbor_node_t **root);
 /*
  * Strict API
  */
-extern ecbor_major_type_t
+extern ecbor_type_t
 ecbor_get_type (ecbor_item_t *item);
 
 extern ecbor_error_t
@@ -248,33 +251,33 @@ ecbor_get_tag_item (ecbor_item_t *tag, ecbor_item_t *arr_item);
  * Inline API
  */
 #define ECBOR_GET_TYPE(i) \
-  ((i).major_type)
+  ((i).type)
 
 #define ECBOR_IS_INDEFINITE(i) \
   ((i).is_indefinite)
 
 #define ECBOR_IS_NINT(i) \
-  ((i).major_type == ECBOR_MT_NINT)
+  ((i).type == ECBOR_TYPE_NINT)
 #define ECBOR_IS_UINT(i) \
-  ((i).major_type == ECBOR_MT_UINT)
+  ((i).type == ECBOR_TYPE_UINT)
 #define ECBOR_IS_INTEGER(i) \
   (ECBOR_IS_NINT(i) || ECBOR_IS_UINT(i))
 #define ECBOR_IS_BSTR(i) \
-  ((i).major_type == ECBOR_MT_BSTR)
+  ((i).type == ECBOR_TYPE_BSTR)
 #define ECBOR_IS_STR(i) \
-  ((i).major_type == ECBOR_MT_STR)
+  ((i).type == ECBOR_TYPE_STR)
 #define ECBOR_IS_ARRAY(i) \
-  ((i).major_type == ECBOR_MT_ARRAY)
+  ((i).type == ECBOR_TYPE_ARRAY)
 #define ECBOR_IS_MAP(i) \
-  ((i).major_type == ECBOR_MT_MAP)
+  ((i).type == ECBOR_TYPE_MAP)
 #define ECBOR_IS_TAG(i) \
-  ((i).major_type == ECBOR_MT_TAG)
+  ((i).type == ECBOR_TYPE_TAG)
 #define ECBOR_IS_FP32(i) \
-  ((i).major_type == ECBOR_MT_FP32)
+  ((i).type == ECBOR_TYPE_FP32)
 #define ECBOR_IS_FLOAT(i) \
   ECBOR_IS_FP32(i)
 #define ECBOR_IS_FP64(i) \
-  ((i).major_type == ECBOR_MT_FP64)
+  ((i).type == ECBOR_TYPE_FP64)
 #define ECBOR_IS_DOUBLE(i) \
   ECBOR_IS_FP64(i)
 

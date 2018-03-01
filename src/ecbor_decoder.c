@@ -199,7 +199,7 @@ static ecbor_error_t
 ecbor_decode_next_internal (ecbor_decode_context_t *context,
                             ecbor_item_t *item,
                             int8_t is_chunk,
-                            ecbor_major_type_t chunk_mtype)
+                            ecbor_type_t chunk_mtype)
 {
   unsigned int additional;
 
@@ -214,21 +214,21 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
   }
   
   /* clear item, just so we do not leave garbage on partial read */
-  item->major_type = ECBOR_MT_UNDEFINED;
+  item->type = ECBOR_TYPE_UNDEFINED;
   item->size = 0;
   item->length = 0;
   item->is_indefinite = false;
   
   /* extract major type (most significant three bits) and additional info */
-  item->major_type = (*context->in_position >> 5) & 0x07;
+  item->type = (*context->in_position >> 5) & 0x07;
   additional = (*context->in_position & 0x1f);
   context->in_position ++; context->bytes_left --;
   
   /* check mandatory major type (in case we are reading string chunks);
      we do not want to continue parsing a malformed indefinite string and
      potentially explode the stack with subsequent calls */
-  if (is_chunk && chunk_mtype != item->major_type) {
-    if (item->major_type == ECBOR_MT_SPECIAL
+  if (is_chunk && chunk_mtype != item->type) {
+    if (item->type == (ecbor_type_t) ECBOR_TYPE_SPECIAL
         && additional == ECBOR_ADDITIONAL_INDEFINITE) {
       /* this is a valid stop code, pass it directly; note that this branch is
          only taken when inside an indefinite string */
@@ -240,16 +240,16 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
   }
   
   /* handle type */
-  switch (item->major_type) {
+  switch (item->type) {
 
     /*
      * Integer types
      */
-    case ECBOR_MT_UINT:
+    case ECBOR_TYPE_UINT:
       return ecbor_decode_uint (context, &item->value.uinteger, &item->size,
                                 additional);
     
-    case ECBOR_MT_NINT:
+    case ECBOR_TYPE_NINT:
       {
         /* read negative value as unsigned */
         ecbor_error_t rc = ecbor_decode_uint (context, &item->value.uinteger,
@@ -266,8 +266,8 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
     /*
      * String types
      */
-    case ECBOR_MT_BSTR:
-    case ECBOR_MT_STR:
+    case ECBOR_TYPE_BSTR:
+    case ECBOR_TYPE_STR:
       /* keep buffer pointer from current pointer */
       item->value.string.str = context->in_position;
       item->value.string.n_chunks = 0;
@@ -295,7 +295,7 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
         while (true) {
           /* read next chunk */
           rc = ecbor_decode_next_internal (context, &chunk, true,
-                                           item->major_type);
+                                           item->type);
           if (rc != ECBOR_OK) {
             if (rc == ECBOR_END_OF_INDEFINITE) {
               /* stop code found, break from loop */
@@ -339,8 +339,8 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
     /*
      * Arrays and maps
      */
-    case ECBOR_MT_ARRAY:
-    case ECBOR_MT_MAP:
+    case ECBOR_TYPE_ARRAY:
+    case ECBOR_TYPE_MAP:
       /* keep buffer pointer from current pointer */
       item->value.items = context->in_position;
 
@@ -359,7 +359,7 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
           while (true) {
             /* read next chunk */
             rc = ecbor_decode_next_internal (context, &child, false,
-                                             ECBOR_MT_UNDEFINED);
+                                             ECBOR_TYPE_UNDEFINED);
             if (rc != ECBOR_OK) {
               if (rc == ECBOR_END_OF_INDEFINITE) {
                 /* stop code found, break from loop */
@@ -380,7 +380,7 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
             item->length ++;
           }
           
-          if ((item->major_type == ECBOR_MT_MAP) && (item->length % 2 != 0)) {
+          if ((item->type == ECBOR_TYPE_MAP) && (item->length % 2 != 0)) {
             /* incomplete key-value pair; we expect maps to have even number of
                items */
             return ECBOR_ERR_INVALID_KEY_VALUE_PAIR;
@@ -394,7 +394,7 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
           return rc;
         }
 
-        if (item->major_type == ECBOR_MT_MAP) {
+        if (item->type == ECBOR_TYPE_MAP) {
           /* we keep the total number of items in length, yet the map has the
              number of key-value pairs encoded in the length */
           item->length *= 2;
@@ -409,7 +409,7 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
           for (child_no = 0; child_no < item->length; child_no ++) {
             /* read next child */
             rc = ecbor_decode_next_internal (context, &child, false,
-                                             ECBOR_MT_UNDEFINED);
+                                             ECBOR_TYPE_UNDEFINED);
             if (rc != ECBOR_OK) {
               if (rc == ECBOR_END_OF_INDEFINITE) {
                 /* stop code found, but none is expected */
@@ -431,7 +431,7 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
       }
       break;
 
-    case ECBOR_MT_TAG:
+    case ECBOR_TYPE_TAG:
       {
         ecbor_error_t rc;
 
@@ -451,7 +451,7 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
 
           /* not in streamed mode; compute size so we can advance */
           rc = ecbor_decode_next_internal (context, &child, false,
-                                           ECBOR_MT_UNDEFINED);
+                                           ECBOR_TYPE_UNDEFINED);
           if (rc != ECBOR_OK) {
             return rc;
           }
@@ -462,7 +462,10 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
       }
       break;
 
-    case ECBOR_MT_SPECIAL:
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wswitch"
+    case ECBOR_TYPE_SPECIAL:
+#pragma GCC diagnostic pop
       if (additional == ECBOR_ADDITIONAL_INDEFINITE) {
         /* stop code */
         item->size = 1;
@@ -475,11 +478,11 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
         return ECBOR_ERR_CURRENTLY_NOT_SUPPORTED;
       } else if (additional == ECBOR_ADDITIONAL_4BYTE) {
         /* floating point 32bit */
-        item->major_type = ECBOR_MT_FP32;
+        item->type = ECBOR_TYPE_FP32;
         return ecbor_decode_fp32 (context, &item->value.fp32, &item->size);
       } else if (additional == ECBOR_ADDITIONAL_8BYTE) {
         /* floating point 64bit */
-        item->major_type = ECBOR_MT_FP64;
+        item->type = ECBOR_TYPE_FP64;
         return ecbor_decode_fp64 (context, &item->value.fp64, &item->size);
       } else {
         /* currently unassigned according to RFC */
@@ -514,7 +517,7 @@ ecbor_decode (ecbor_decode_context_t *context, ecbor_item_t *item)
   }
   
   /* we just get the next item */
-  return ecbor_decode_next_internal (context, item, false, ECBOR_MT_UNDEFINED);
+  return ecbor_decode_next_internal (context, item, false, ECBOR_TYPE_UNDEFINED);
 }
 
 extern ecbor_error_t
@@ -551,20 +554,20 @@ ecbor_decode_tree (ecbor_decode_context_t *context)
     
     /* consume next item */
     rc = ecbor_decode_next_internal (context, &curr_node->item, false,
-                                     ECBOR_MT_UNDEFINED);
+                                     ECBOR_TYPE_UNDEFINED);
 
     /* handle end of indefinite */
     if (rc == ECBOR_END_OF_INDEFINITE) {
       if ((!par_node)
-          || (par_node->item.major_type != ECBOR_MT_MAP
-              && par_node->item.major_type != ECBOR_MT_ARRAY)
+          || (par_node->item.type != ECBOR_TYPE_MAP
+              && par_node->item.type != ECBOR_TYPE_ARRAY)
           || (!par_node->item.is_indefinite)) {
         /* we are not in an indefinite map or array */
         rc = ECBOR_ERR_INVALID_STOP_CODE;
         goto end;
       }
       
-      if (par_node && par_node->item.major_type == ECBOR_MT_MAP
+      if (par_node && par_node->item.type == ECBOR_TYPE_MAP
           && prev_node && (prev_node->index % 2 == 0)) {
         /* map must have even number of children */
         rc = ECBOR_ERR_INVALID_KEY_VALUE_PAIR;
@@ -608,9 +611,9 @@ ecbor_decode_tree (ecbor_decode_context_t *context)
     }
     
     /* handle new children */
-    if (curr_node->item.major_type == ECBOR_MT_MAP
-        || curr_node->item.major_type == ECBOR_MT_ARRAY
-        || curr_node->item.major_type == ECBOR_MT_TAG) {
+    if (curr_node->item.type == ECBOR_TYPE_MAP
+        || curr_node->item.type == ECBOR_TYPE_ARRAY
+        || curr_node->item.type == ECBOR_TYPE_TAG) {
       /* jump a level down */
       par_node = curr_node;
       prev_node = NULL;
@@ -619,9 +622,9 @@ ecbor_decode_tree (ecbor_decode_context_t *context)
     
     /* handle end of definite maps and arrays, and tags */
     while (par_node
-           && (par_node->item.major_type == ECBOR_MT_MAP
-               || par_node->item.major_type == ECBOR_MT_ARRAY
-               || par_node->item.major_type == ECBOR_MT_TAG)
+           && (par_node->item.type == ECBOR_TYPE_MAP
+               || par_node->item.type == ECBOR_TYPE_ARRAY
+               || par_node->item.type == ECBOR_TYPE_TAG)
            && !par_node->item.is_indefinite
            && par_node->item.length == (curr_node->index + 1)) {
       /* parent has filled all items, jump a level up */

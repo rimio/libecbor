@@ -84,17 +84,17 @@ ecbor_fp64_from_big_endian (double value)
 #endif
 }
 
-extern ecbor_major_type_t
+extern ecbor_type_t
 ecbor_get_type (ecbor_item_t *item)
 {
   if (!item) {
-    return ECBOR_MT_UNDEFINED;
+    return ECBOR_TYPE_UNDEFINED;
   }
-  if (item->major_type < ECBOR_MT_FIRST
-      || item->major_type > ECBOR_MT_LAST) {
-    return ECBOR_MT_UNDEFINED;
+  if (item->type < ECBOR_TYPE_FIRST
+      || item->type > ECBOR_TYPE_LAST) {
+    return ECBOR_TYPE_UNDEFINED;
   }
-  return item->major_type;
+  return item->type;
 }
 
 extern ecbor_error_t
@@ -107,35 +107,35 @@ ecbor_get_value (ecbor_item_t *item, void *value)
     return ECBOR_ERR_NULL_VALUE;
   }
   
-  switch (item->major_type) {
-    case ECBOR_MT_NINT:
+  switch (item->type) {
+    case ECBOR_TYPE_NINT:
       *((int64_t *)value) = item->value.integer;
       break;
 
-    case ECBOR_MT_UINT:
+    case ECBOR_TYPE_UINT:
       *((uint64_t *)value) = item->value.uinteger;
       break;
 
-    case ECBOR_MT_BSTR:
-    case ECBOR_MT_STR:
+    case ECBOR_TYPE_BSTR:
+    case ECBOR_TYPE_STR:
       if (item->is_indefinite) {
         return ECBOR_ERR_WONT_RETURN_INDEFINITE;
       }
       *((uint8_t **)value) = (uint8_t *) item->value.string.str;
       break;
 
-    case ECBOR_MT_TAG:
+    case ECBOR_TYPE_TAG:
       *((uint64_t *)value) = item->value.tag.tag_value;
       break;
     
-    case ECBOR_MT_FP16:
+    case ECBOR_TYPE_FP16:
       return ECBOR_ERR_CURRENTLY_NOT_SUPPORTED;
 
-    case ECBOR_MT_FP32:
+    case ECBOR_TYPE_FP32:
       *((float *)value) = item->value.fp32;
       break;
 
-    case ECBOR_MT_FP64:
+    case ECBOR_TYPE_FP64:
       *((double *)value) = item->value.fp64;
       break;
 
@@ -156,14 +156,14 @@ ecbor_get_length (ecbor_item_t *item, uint64_t *length)
     return ECBOR_ERR_NULL_VALUE;
   }
   
-  switch (item->major_type) {
-    case ECBOR_MT_BSTR:
-    case ECBOR_MT_STR:
-    case ECBOR_MT_ARRAY:
+  switch (item->type) {
+    case ECBOR_TYPE_BSTR:
+    case ECBOR_TYPE_STR:
+    case ECBOR_TYPE_ARRAY:
       *length = item->length;
       break;
 
-    case ECBOR_MT_MAP:
+    case ECBOR_TYPE_MAP:
       *length = item->length / 2;
       break;
 
@@ -185,7 +185,7 @@ ecbor_get_array_item (ecbor_item_t *array, uint64_t index,
   if (!array) {
     return ECBOR_ERR_NULL_ARRAY;
   }
-  if (array->major_type != ECBOR_MT_ARRAY) {
+  if (array->type != ECBOR_TYPE_ARRAY) {
     return ECBOR_ERR_INVALID_TYPE;
   }
   if (array->length <= index) {
@@ -225,7 +225,7 @@ ecbor_get_map_item (ecbor_item_t *map, uint64_t index, ecbor_item_t *key,
   if (!map) {
     return ECBOR_ERR_NULL_MAP;
   }
-  if (map->major_type != ECBOR_MT_MAP) {
+  if (map->type != ECBOR_TYPE_MAP) {
     return ECBOR_ERR_INVALID_TYPE;
   }
   if (map->length <= (index * 2)) {
@@ -272,7 +272,7 @@ ecbor_get_tag_item (ecbor_item_t *tag, ecbor_item_t *item)
   if (!tag) {
     return ECBOR_ERR_NULL_ITEM;
   }
-  if (tag->major_type != ECBOR_MT_TAG) {
+  if (tag->type != ECBOR_TYPE_TAG) {
     return ECBOR_ERR_INVALID_TYPE;
   }
   if (!item) {

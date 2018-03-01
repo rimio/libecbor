@@ -49,7 +49,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
 {
   static const unsigned int max_str_print_len = 64;
   static const char *msg_too_large = "<too_large>";
-  ecbor_major_type_t mt;
+  ecbor_type_t mt;
   ecbor_error_t rc;
   unsigned int i;
 
@@ -58,7 +58,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
 
   mt = ecbor_get_type (item);
   switch (mt) {
-    case ECBOR_MT_NINT:
+    case ECBOR_TYPE_NINT:
       {
         int64_t val;
         
@@ -71,7 +71,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
       }
       break;
 
-    case ECBOR_MT_UINT:
+    case ECBOR_TYPE_UINT:
       {
         uint64_t val;
         
@@ -84,7 +84,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
       }
       break;
     
-    case ECBOR_MT_STR:
+    case ECBOR_TYPE_STR:
       {
         uint64_t len;
         char *val;
@@ -106,7 +106,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
       }
       break;
 
-    case ECBOR_MT_BSTR:
+    case ECBOR_TYPE_BSTR:
       {
         uint64_t len;
         char *val;
@@ -135,7 +135,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
       }
       break;
     
-    case ECBOR_MT_ARRAY:
+    case ECBOR_TYPE_ARRAY:
       {
         uint64_t len, i;
 
@@ -162,7 +162,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
       }
       break;
 
-    case ECBOR_MT_MAP:
+    case ECBOR_TYPE_MAP:
       {
         uint64_t len, i;
         char kv_msg[100] = { 0 };
@@ -197,7 +197,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
       }
       break;
 
-    case ECBOR_MT_TAG:
+    case ECBOR_TYPE_TAG:
       {
         int64_t val;
         ecbor_item_t child;
@@ -221,7 +221,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
       }
       break;
 
-    case ECBOR_MT_FP32:
+    case ECBOR_TYPE_FP32:
       {
         float val;
         
@@ -234,7 +234,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
       }
       break;
 
-    case ECBOR_MT_FP64:
+    case ECBOR_TYPE_FP64:
       {
         double val;
         

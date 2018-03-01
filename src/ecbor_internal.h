@@ -15,6 +15,11 @@
 #define false 0
 #define true 1
 
+/* CBOR major type 7 must not be exposed to user, but translated to other types */
+enum {
+  ECBOR_TYPE_SPECIAL = 7
+};
+
 /* Additional value meanings */
 enum {
   ECBOR_ADDITIONAL_1BYTE              = 24,
