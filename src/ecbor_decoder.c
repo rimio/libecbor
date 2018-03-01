@@ -195,6 +195,31 @@ ecbor_decode_fp64 (ecbor_decode_context_t *context,
   return ECBOR_OK;
 }
 
+static inline ecbor_error_t
+ecbor_decode_simple_value (ecbor_item_t *item)
+{
+  switch (item->value.uinteger) {
+    case ECBOR_SIMPLE_FALSE:
+    case ECBOR_SIMPLE_TRUE:
+      item->type = ECBOR_TYPE_BOOL;
+      item->value.uinteger =
+        (item->value.uinteger == ECBOR_SIMPLE_FALSE ? 0 : 1);
+      break;
+    
+    case ECBOR_SIMPLE_NULL:
+      item->type = ECBOR_TYPE_NULL;
+      break;
+
+    case ECBOR_SIMPLE_UNDEFINED:
+      break;
+    
+    default:
+      return ECBOR_ERR_CURRENTLY_NOT_SUPPORTED;
+  }
+  
+  return ECBOR_OK;
+}
+
 static ecbor_error_t
 ecbor_decode_next_internal (ecbor_decode_context_t *context,
                             ecbor_item_t *item,
@@ -471,8 +496,16 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
         item->size = 1;
         return ECBOR_END_OF_INDEFINITE;
       } else if (additional <= ECBOR_ADDITIONAL_1BYTE) {
-        return ecbor_decode_uint (context, &item->value.uinteger, &item->size,
-                                  additional);
+        ecbor_error_t rc;
+        /* read integer simple value */
+        rc = ecbor_decode_uint (context, &item->value.uinteger, &item->size,
+                                additional);
+        if (rc != ECBOR_OK) {
+          return rc;
+        }
+        
+        /* parse simple value */
+        return ecbor_decode_simple_value (item);
       } else if (additional == ECBOR_ADDITIONAL_2BYTE) {
         /* currently we do not support half float */
         return ECBOR_ERR_CURRENTLY_NOT_SUPPORTED;

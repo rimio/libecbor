@@ -246,6 +246,23 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
         printf ("[FP64] value %f\n", val);
       }
       break;
+    
+    case ECBOR_TYPE_BOOL:
+      {
+        uint64_t val;
+        
+        rc = ecbor_get_value (item, (void *) &val);
+        if (rc != ECBOR_OK) {
+          return rc;
+        }
+        
+        printf ("[BOOL] value %s\n", (val ? "true" : "false"));
+      }
+      break;
+    
+    case ECBOR_TYPE_NULL:
+      printf ("[NULL]\n");
+      break;
 
     default:
       printf ("[UNKNOWN]\n");

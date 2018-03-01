@@ -138,6 +138,10 @@ ecbor_get_value (ecbor_item_t *item, void *value)
     case ECBOR_TYPE_FP64:
       *((double *)value) = item->value.fp64;
       break;
+    
+    case ECBOR_TYPE_BOOL:
+      *((uint64_t *)value) = item->value.uinteger;
+      break;
 
     default:
       return ECBOR_ERR_INVALID_TYPE;

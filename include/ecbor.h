@@ -82,9 +82,11 @@ typedef enum {
   ECBOR_TYPE_FP16       = 8,
   ECBOR_TYPE_FP32       = 9,
   ECBOR_TYPE_FP64       = 10,
+  ECBOR_TYPE_BOOL       = 11,
+  ECBOR_TYPE_NULL       = 12,
 
   /* Last type, used for bounds checking */
-  ECBOR_TYPE_LAST       = 10
+  ECBOR_TYPE_LAST       = ECBOR_TYPE_NULL
 } ecbor_type_t;
 
 /*

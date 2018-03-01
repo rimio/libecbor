@@ -30,6 +30,14 @@ enum {
   ECBOR_ADDITIONAL_INDEFINITE         = 31
 };
 
+/* Simple value meanings */
+enum {
+  ECBOR_SIMPLE_FALSE                  = 20,
+  ECBOR_SIMPLE_TRUE                   = 21,
+  ECBOR_SIMPLE_NULL                   = 22,
+  ECBOR_SIMPLE_UNDEFINED              = 23
+};
+
 /*
  * Endianness
  */
