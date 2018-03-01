@@ -211,6 +211,7 @@ ecbor_decode_simple_value (ecbor_item_t *item)
       break;
 
     case ECBOR_SIMPLE_UNDEFINED:
+      item->type = ECBOR_TYPE_UNDEFINED;
       break;
     
     default:
@@ -239,7 +240,7 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
   }
   
   /* clear item, just so we do not leave garbage on partial read */
-  item->type = ECBOR_TYPE_UNDEFINED;
+  item->type = ECBOR_TYPE_NONE;
   item->size = 0;
   item->length = 0;
   item->is_indefinite = false;
@@ -384,7 +385,7 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
           while (true) {
             /* read next chunk */
             rc = ecbor_decode_next_internal (context, &child, false,
-                                             ECBOR_TYPE_UNDEFINED);
+                                             ECBOR_TYPE_NONE);
             if (rc != ECBOR_OK) {
               if (rc == ECBOR_END_OF_INDEFINITE) {
                 /* stop code found, break from loop */
@@ -434,7 +435,7 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
           for (child_no = 0; child_no < item->length; child_no ++) {
             /* read next child */
             rc = ecbor_decode_next_internal (context, &child, false,
-                                             ECBOR_TYPE_UNDEFINED);
+                                             ECBOR_TYPE_NONE);
             if (rc != ECBOR_OK) {
               if (rc == ECBOR_END_OF_INDEFINITE) {
                 /* stop code found, but none is expected */
@@ -476,7 +477,7 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
 
           /* not in streamed mode; compute size so we can advance */
           rc = ecbor_decode_next_internal (context, &child, false,
-                                           ECBOR_TYPE_UNDEFINED);
+                                           ECBOR_TYPE_NONE);
           if (rc != ECBOR_OK) {
             return rc;
           }
@@ -550,7 +551,7 @@ ecbor_decode (ecbor_decode_context_t *context, ecbor_item_t *item)
   }
   
   /* we just get the next item */
-  return ecbor_decode_next_internal (context, item, false, ECBOR_TYPE_UNDEFINED);
+  return ecbor_decode_next_internal (context, item, false, ECBOR_TYPE_NONE);
 }
 
 extern ecbor_error_t
@@ -587,7 +588,7 @@ ecbor_decode_tree (ecbor_decode_context_t *context)
     
     /* consume next item */
     rc = ecbor_decode_next_internal (context, &curr_node->item, false,
-                                     ECBOR_TYPE_UNDEFINED);
+                                     ECBOR_TYPE_NONE);
 
     /* handle end of indefinite */
     if (rc == ECBOR_END_OF_INDEFINITE) {

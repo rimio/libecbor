@@ -61,8 +61,9 @@ typedef enum {
  * CBOR types
  */
 typedef enum {
-  /* Unknown type */
-  ECBOR_TYPE_UNDEFINED  = -1,
+  /* This is used when, for some reason, no other type could be resolved;
+     Usually denotes an error occured. */
+  ECBOR_TYPE_NONE       = -1,
   
   /* First type, used for bounds checking */
   ECBOR_TYPE_FIRST      = 0,
@@ -84,9 +85,10 @@ typedef enum {
   ECBOR_TYPE_FP64       = 10,
   ECBOR_TYPE_BOOL       = 11,
   ECBOR_TYPE_NULL       = 12,
+  ECBOR_TYPE_UNDEFINED  = 13,
 
   /* Last type, used for bounds checking */
-  ECBOR_TYPE_LAST       = ECBOR_TYPE_NULL
+  ECBOR_TYPE_LAST       = ECBOR_TYPE_UNDEFINED
 } ecbor_type_t;
 
 /*

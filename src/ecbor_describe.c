@@ -263,6 +263,10 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
     case ECBOR_TYPE_NULL:
       printf ("[NULL]\n");
       break;
+    
+    case ECBOR_TYPE_UNDEFINED:
+      printf ("[UNDEFINED]\n");
+      break;
 
     default:
       printf ("[UNKNOWN]\n");

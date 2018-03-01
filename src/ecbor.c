@@ -88,11 +88,11 @@ extern ecbor_type_t
 ecbor_get_type (ecbor_item_t *item)
 {
   if (!item) {
-    return ECBOR_TYPE_UNDEFINED;
+    return ECBOR_TYPE_NONE;
   }
   if (item->type < ECBOR_TYPE_FIRST
       || item->type > ECBOR_TYPE_LAST) {
-    return ECBOR_TYPE_UNDEFINED;
+    return ECBOR_TYPE_NONE;
   }
   return item->type;
 }
