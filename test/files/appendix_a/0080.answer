@@ -1,0 +1,5 @@
+[ARRAY] len 2 
+  [STR] len 1 value 'a'
+  [MAP] len 1 (indefinite)
+      key[0]: [STR] len 1 value 'b'
+      val[0]: [STR] len 1 value 'c'

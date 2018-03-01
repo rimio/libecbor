@@ -87,50 +87,98 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
     case ECBOR_TYPE_STR:
       {
         uint64_t len;
-        char *val;
 
         rc = ecbor_get_length (item, &len);
         if (rc != ECBOR_OK) {
           return rc;
         }
-        
-        rc = ecbor_get_value (item, (char *) &val);
-        if (rc != ECBOR_OK) {
-          return rc;
-        }
 
-        printf ("[STR] len %u %s value '%.*s'\n", (unsigned int) len,
-                (ECBOR_IS_INDEFINITE (*item) ? "(indefinite)" : ""),
-                (int)(len <= max_str_print_len ? len : strlen(msg_too_large)),
-                (len <= max_str_print_len ? val : msg_too_large));
+        if (ECBOR_IS_INDEFINITE (*item)) {
+          uint64_t nchunks;
+          
+          rc = ecbor_get_str_chunk_count (item, &nchunks);
+          if (rc != ECBOR_OK) {
+            return rc;
+          }
+
+          printf ("[STR] len %u (indefinite)\n", (unsigned int) len);
+          for (i = 0; i < nchunks; i ++) {
+            ecbor_item_t chunk;
+
+            rc = ecbor_get_str_chunk (item, i, &chunk);
+            if (rc != ECBOR_OK) {
+              return rc;
+            }
+
+            rc = print_ecbor_item (&chunk, level + 1, "");
+            if (rc != ECBOR_OK) {
+              return rc;
+            }
+          }
+        } else {
+          char *val;
+
+          rc = ecbor_get_str (item, &val);
+          if (rc != ECBOR_OK) {
+            return rc;
+          }
+
+          printf ("[STR] len %u value '%.*s'\n", (unsigned int) len,
+                  (int)(len <= max_str_print_len ? len : strlen(msg_too_large)),
+                  (len <= max_str_print_len ? val : msg_too_large));
+        }
       }
       break;
 
     case ECBOR_TYPE_BSTR:
       {
         uint64_t len;
-        char *val;
 
         rc = ecbor_get_length (item, &len);
         if (rc != ECBOR_OK) {
           return rc;
         }
-        
-        rc = ecbor_get_value (item, (char *) &val);
-        if (rc != ECBOR_OK) {
-          return rc;
-        }
 
-        printf ("[BSTR] len %u %s value ", (unsigned int) len,
-                (ECBOR_IS_INDEFINITE (*item) ? "(indefinite)" : ""));
-        if (len > max_str_print_len) {
-          printf ("'%s'\n", msg_too_large);
-        } else {
-          printf ("'");
-          for (i = 0; i < len; i ++) {
-            printf("%02x", val[i]);
+        if (ECBOR_IS_INDEFINITE (*item)) {
+          uint64_t nchunks;
+          
+          rc = ecbor_get_bstr_chunk_count (item, &nchunks);
+          if (rc != ECBOR_OK) {
+            return rc;
           }
-          printf ("'\n");
+
+          printf ("[BSTR] len %u (indefinite)\n", (unsigned int) len);
+          for (i = 0; i < nchunks; i ++) {
+            ecbor_item_t chunk;
+
+            rc = ecbor_get_bstr_chunk (item, i, &chunk);
+            if (rc != ECBOR_OK) {
+              return rc;
+            }
+
+            rc = print_ecbor_item (&chunk, level + 1, "");
+            if (rc != ECBOR_OK) {
+              return rc;
+            }
+          }
+        } else {
+          uint8_t *val;
+
+          rc = ecbor_get_bstr (item, &val);
+          if (rc != ECBOR_OK) {
+            return rc;
+          }
+
+          printf ("[BSTR] len %u value ", (unsigned int) len);
+          if (len > max_str_print_len) {
+            printf ("'%s'\n", msg_too_large);
+          } else {
+            printf ("'");
+            for (i = 0; i < len; i ++) {
+              printf("%02x", val[i]);
+            }
+            printf ("'\n");
+          }
         }
       }
       break;

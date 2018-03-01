@@ -1,0 +1,5 @@
+[MAP] len 2 (indefinite)
+    key[0]: [STR] len 3 value 'Fun'
+    val[0]: [BOOL] value true
+    key[1]: [STR] len 3 value 'Amt'
+    val[1]: [NINT] value -2

@@ -300,7 +300,138 @@ ecbor_get_tag_item (ecbor_item_t *tag, ecbor_item_t *item)
   return ECBOR_OK;
 }
 
-extern ecbor_error_t
+static inline ecbor_error_t
+ecbor_get_string_internal (ecbor_item_t *str, uint8_t **value, ecbor_type_t type)
+{
+  if (!str) {
+    return ECBOR_ERR_NULL_ITEM;
+  }
+  if (!value) {
+    return ECBOR_ERR_NULL_VALUE;
+  }
+  if (str->type != type) {
+    return ECBOR_ERR_INVALID_TYPE;
+  }
+  if (str->is_indefinite) {
+    return ECBOR_ERR_WONT_RETURN_INDEFINITE;
+  }
+  
+  (*value) = (uint8_t *) str->value.string.str;
+  
+  return ECBOR_OK;
+}
+
+static inline ecbor_error_t
+ecbor_get_string_chunk_count_internal (ecbor_item_t *str, uint64_t *count,
+                                       ecbor_type_t type)
+{
+  if (!str) {
+    return ECBOR_ERR_NULL_ITEM;
+  }
+  if (!count) {
+    return ECBOR_ERR_NULL_VALUE;
+  }
+  if (str->type != type) {
+    return ECBOR_ERR_INVALID_TYPE;
+  }
+  if (!str->is_indefinite) {
+    return ECBOR_ERR_WONT_RETURN_DEFINITE;
+  }
+
+  (*count) = str->value.string.n_chunks;
+
+  return ECBOR_OK;
+}
+
+static inline ecbor_error_t
+ecbor_get_string_chunk_internal (ecbor_item_t *str, uint64_t index,
+                                 ecbor_item_t *chunk, ecbor_type_t type)
+{
+  ecbor_decode_context_t context;
+  ecbor_error_t rc;
+  uint64_t i;
+
+  if (!str) {
+    return ECBOR_ERR_NULL_ITEM;
+  }
+  if (!chunk) {
+    return ECBOR_ERR_NULL_VALUE;
+  }
+  if (str->type != type) {
+    return ECBOR_ERR_INVALID_TYPE;
+  }
+  if (!str->is_indefinite) {
+    return ECBOR_ERR_WONT_RETURN_DEFINITE;
+  }
+  if (index >= str->value.string.n_chunks) {
+    return ECBOR_ERR_INDEX_OUT_OF_BOUNDS;
+  }
+  
+  /* locate chunk */
+  rc = ecbor_initialize_decode (&context, str->value.string.str, str->size);
+  if (rc != ECBOR_OK) {
+    return rc;
+  }
+  
+  for (i = 0; i <= index; i ++) {
+    rc = ecbor_decode (&context, chunk);
+    if (rc != ECBOR_OK) {
+      if (rc == ECBOR_END_OF_BUFFER) {
+        return ECBOR_ERR_INVALID_END_OF_BUFFER;
+      } else {
+        return rc;
+      }
+    }
+  }
+  
+  /* check chunk */
+  if (chunk->type != type) {
+    return ECBOR_ERR_INVALID_CHUNK_MAJOR_TYPE;
+  }
+  if (chunk->is_indefinite) {
+    return ECBOR_ERR_NESTET_INDEFINITE_STRING;
+  }
+  
+  return ECBOR_OK;
+}
+
+ecbor_error_t
+ecbor_get_str (ecbor_item_t *str, char **value)
+{
+  return ecbor_get_string_internal (str, (uint8_t **)value, ECBOR_TYPE_STR);
+}
+
+ecbor_error_t
+ecbor_get_str_chunk_count (ecbor_item_t *str, uint64_t *count)
+{
+  return ecbor_get_string_chunk_count_internal (str, count, ECBOR_TYPE_STR);
+}
+
+ecbor_error_t
+ecbor_get_str_chunk (ecbor_item_t *str, uint64_t index, ecbor_item_t *chunk)
+{
+  return ecbor_get_string_chunk_internal (str, index, chunk, ECBOR_TYPE_STR);
+}
+
+ecbor_error_t
+ecbor_get_bstr (ecbor_item_t *str, uint8_t **value)
+{
+  return ecbor_get_string_internal (str, value, ECBOR_TYPE_BSTR);
+}
+
+ecbor_error_t
+ecbor_get_bstr_chunk_count (ecbor_item_t *str, uint64_t *count)
+{
+  return ecbor_get_string_chunk_count_internal (str, count, ECBOR_TYPE_BSTR);
+}
+
+ecbor_error_t
+ecbor_get_bstr_chunk (ecbor_item_t *str, uint64_t index, ecbor_item_t *chunk)
+{
+  return ecbor_get_string_chunk_internal (str, index, chunk, ECBOR_TYPE_BSTR);
+}
+
+ecbor_error_t
 ecbor_get_root (ecbor_decode_context_t *context, ecbor_node_t **root)
 {
   if (!context) {

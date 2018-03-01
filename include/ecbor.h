@@ -38,6 +38,7 @@ typedef enum {
   ECBOR_ERR_EMPTY_NODE_BUFFER               = 52,
   ECBOR_ERR_INDEX_OUT_OF_BOUNDS             = 53,
   ECBOR_ERR_WONT_RETURN_INDEFINITE          = 54,
+  ECBOR_ERR_WONT_RETURN_DEFINITE            = 55,
   
   /* semantic errors */
   ECBOR_ERR_CURRENTLY_NOT_SUPPORTED         = 100,
@@ -251,6 +252,26 @@ extern ecbor_error_t
 ecbor_get_tag_item (ecbor_item_t *tag, ecbor_item_t *arr_item);
 
 
+extern ecbor_error_t
+ecbor_get_str (ecbor_item_t *str, char **value);
+
+extern ecbor_error_t
+ecbor_get_str_chunk_count (ecbor_item_t *str, uint64_t *count);
+
+extern ecbor_error_t
+ecbor_get_str_chunk (ecbor_item_t *str, uint64_t index, ecbor_item_t *chunk);
+
+
+extern ecbor_error_t
+ecbor_get_bstr (ecbor_item_t *str, uint8_t **value);
+
+extern ecbor_error_t
+ecbor_get_bstr_chunk_count (ecbor_item_t *str, uint64_t *count);
+
+extern ecbor_error_t
+ecbor_get_bstr_chunk (ecbor_item_t *str, uint64_t index, ecbor_item_t *chunk);
+
+
 /*
  * Inline API
  */
@@ -259,6 +280,8 @@ ecbor_get_tag_item (ecbor_item_t *tag, ecbor_item_t *arr_item);
 
 #define ECBOR_IS_INDEFINITE(i) \
   ((i).is_indefinite)
+#define ECBOR_IS_DEFINITE(i) \
+  (!(i).is_indefinite)
 
 #define ECBOR_IS_NINT(i) \
   ((i).type == ECBOR_TYPE_NINT)
