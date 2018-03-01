@@ -1,0 +1,5 @@
+[MAP] len 2 
+    key[0]: [UINT] value 1
+    val[0]: [UINT] value 2
+    key[1]: [UINT] value 3
+    val[1]: [UINT] value 4

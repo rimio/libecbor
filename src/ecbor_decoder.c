@@ -367,14 +367,14 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
      */
     case ECBOR_TYPE_ARRAY:
     case ECBOR_TYPE_MAP:
-      /* keep buffer pointer from current pointer */
-      item->value.items = context->in_position;
-
       /* discriminate between definite and indefinite maps and arrays */
       if (additional == ECBOR_ADDITIONAL_INDEFINITE) {
         /* mark accordingly */
         item->is_indefinite = true;
         item->size = 1; /* already processed first byte */
+        
+        /* keep buffer pointer from current pointer */
+        item->value.items = context->in_position;
 
         if (context->mode != ECBOR_MODE_DECODE_STREAMED) {
           /* we have an indefinite map or array and we're not in streamed mode;
@@ -419,6 +419,9 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
         if (rc != ECBOR_OK) {
           return rc;
         }
+        
+        /* keep buffer pointer from current pointer */
+        item->value.items = context->in_position;
 
         if (item->type == ECBOR_TYPE_MAP) {
           /* we keep the total number of items in length, yet the map has the

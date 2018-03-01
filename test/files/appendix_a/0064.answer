@@ -1,0 +1,8 @@
+[ARRAY] len 3 
+  [UINT] value 1
+  [ARRAY] len 2 
+    [UINT] value 2
+    [UINT] value 3
+  [ARRAY] len 2 
+    [UINT] value 4
+    [UINT] value 5
