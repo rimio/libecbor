@@ -20,9 +20,12 @@ static struct option long_options[] = {
   { 0, 0, 0, 0 }
 };
 
-void print_help (void);
-void print_ecbor_error (ecbor_error_t err);
-ecbor_error_t print_ecbor_item (ecbor_item_t *item, int level);
+void
+print_help (void);
+void
+print_ecbor_error (ecbor_error_t err);
+ecbor_error_t
+print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix);
 
 /*
  * Print help
@@ -42,13 +45,16 @@ print_ecbor_error (ecbor_error_t err)
 }
 
 ecbor_error_t
-print_ecbor_item (ecbor_item_t *item, int level)
+print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
 {
+  static const unsigned int max_str_print_len = 64;
+  static const char *msg_too_large = "<too_large>";
   ecbor_major_type_t mt;
   ecbor_error_t rc;
-  int i;
+  unsigned int i;
 
   for(i = 0; i < level * 2; i ++) putchar(' ');
+  printf (prefix);
 
   mt = ecbor_get_type (item);
   switch (mt) {
@@ -58,7 +64,6 @@ print_ecbor_item (ecbor_item_t *item, int level)
         
         rc = ecbor_get_value (item, (void *) &val);
         if (rc != ECBOR_OK) {
-          print_ecbor_error (rc);
           return rc;
         }
         
@@ -72,11 +77,61 @@ print_ecbor_item (ecbor_item_t *item, int level)
         
         rc = ecbor_get_value (item, (void *) &val);
         if (rc != ECBOR_OK) {
-          print_ecbor_error (rc);
           return rc;
         }
         
         printf ("[UINT] value %u\n", (unsigned int) val);
+      }
+      break;
+    
+    case ECBOR_MT_STR:
+      {
+        uint64_t len;
+        char *val;
+
+        rc = ecbor_get_length (item, &len);
+        if (rc != ECBOR_OK) {
+          return rc;
+        }
+        
+        rc = ecbor_get_value (item, (char *) &val);
+        if (rc != ECBOR_OK) {
+          return rc;
+        }
+
+        printf ("[STR] len %u %s value '%.*s'\n", (unsigned int) len,
+                (ECBOR_IS_INDEFINITE (*item) ? "(indefinite)" : ""),
+                (int)(len <= max_str_print_len ? len : strlen(msg_too_large)),
+                (len <= max_str_print_len ? val : msg_too_large));
+      }
+      break;
+
+    case ECBOR_MT_BSTR:
+      {
+        uint64_t len;
+        char *val;
+
+        rc = ecbor_get_length (item, &len);
+        if (rc != ECBOR_OK) {
+          return rc;
+        }
+        
+        rc = ecbor_get_value (item, (char *) &val);
+        if (rc != ECBOR_OK) {
+          return rc;
+        }
+
+        printf ("[BSTR] len %u %s value ", (unsigned int) len,
+                (ECBOR_IS_INDEFINITE (*item) ? "(indefinite)" : ""));
+        if (len > max_str_print_len) {
+          printf ("'%s'\n", msg_too_large);
+        } else {
+          printf ("'");
+          for (i = 0; i < len; i ++) {
+            printf("%2x", val[i]);
+          }
+          printf ("'\n");
+        }
       }
       break;
     
@@ -86,21 +141,55 @@ print_ecbor_item (ecbor_item_t *item, int level)
 
         rc = ecbor_get_length (item, &len);
         if (rc != ECBOR_OK) {
-          print_ecbor_error (rc);
           return rc;
         }
 
-        printf ("[ARRAY] len %u\n", (unsigned int) len);
+        printf ("[ARRAY] len %u %s\n", (unsigned int) len,
+                (ECBOR_IS_INDEFINITE (*item) ? "(indefinite)" : ""));
         for (i = 0; i < len; i ++) {
           ecbor_item_t child;
 
           rc = ecbor_get_array_item (item, i, &child);
           if (rc != ECBOR_OK) {
-            print_ecbor_error (rc);
+            return rc;
+          }
+
+          print_ecbor_item (&child, level+1, "");
+        }
+      }
+      break;
+
+    case ECBOR_MT_MAP:
+      {
+        uint64_t len, i;
+        char kv_msg[100] = { 0 };
+
+        rc = ecbor_get_length (item, &len);
+        if (rc != ECBOR_OK) {
+          return rc;
+        }
+
+        printf ("[MAP] len %u %s\n", (unsigned int) len,
+                (ECBOR_IS_INDEFINITE (*item) ? "(indefinite)" : ""));
+        for (i = 0; i < len; i ++) {
+          ecbor_item_t k, v;
+
+          rc = ecbor_get_map_item (item, i, &k, &v);
+          if (rc != ECBOR_OK) {
+            return rc;
+          }
+
+          sprintf (kv_msg, "key[%u]: ", (unsigned int) i);
+          rc = print_ecbor_item (&k, level+2, kv_msg);
+          if (rc != ECBOR_OK) {
             return rc;
           }
           
-          print_ecbor_item (&child, level+1);
+          sprintf (kv_msg, "val[%u]: ", (unsigned int) i);
+          rc = print_ecbor_item (&v, level+2, kv_msg);
+          if (rc != ECBOR_OK) {
+            return rc;
+          }
         }
       }
       break;
@@ -140,7 +229,7 @@ main(int argc, char **argv)
   }
   
   if (optind != (argc-1)) {
-    printf ("Expecting exactly one file name!\n");
+    fprintf (stderr, "Expecting exactly one file name!\n");
     print_help ();
     return -1;
   } else {
@@ -151,39 +240,39 @@ main(int argc, char **argv)
   {
     FILE *fp;
 
-    printf ("Reading CBOR from file '%s'\n", filename);
+    fprintf (stderr, "Reading CBOR from file '%s'\n", filename);
     fp = fopen (filename, "rb");
     if (!fp) {
-      printf ("Error opening file!\n");
+      fprintf (stderr, "Error opening file!\n");
       return -1;
     }
 
     if (fseek (fp, 0L, SEEK_END)) {
-      printf ("Error seeking end of file!\n");
+      fprintf (stderr, "Error seeking end of file!\n");
       fclose (fp);
       return -1;
     }
     cbor_length = ftell(fp);
     if (cbor_length < 0) {
-      printf ("Error determining input size!\n");
+      fprintf (stderr, "Error determining input size!\n");
       fclose (fp);
       return -1;
     }
     if (fseek (fp, 0L, SEEK_SET)) {
-      printf ("Error seeking beginning of file!\n");
+      fprintf (stderr, "Error seeking beginning of file!\n");
       fclose (fp);
       return -1;
     }
     
     cbor = (unsigned char *) malloc (cbor_length);
     if (!cbor) {
-      printf ("Error allocating %d bytes!\n", (int) cbor_length);
+      fprintf (stderr, "Error allocating %d bytes!\n", (int) cbor_length);
       fclose (fp);
       return -1;
     }
     
     if (fread (cbor, 1, cbor_length, fp) != (size_t) cbor_length) {
-      printf ("Error reading %d bytes!\n", (int) cbor_length);
+      fprintf (stderr, "Error reading %d bytes!\n", (int) cbor_length);
       fclose (fp);
       return -1;
     }
@@ -204,7 +293,7 @@ main(int argc, char **argv)
       return -1;
     }
     
-    printf ("CBOR objects:\n");
+    fprintf (stderr, "CBOR objects:\n");
     
     while (1) {
       rc = ecbor_decode (&context, &item);
@@ -215,8 +304,12 @@ main(int argc, char **argv)
         print_ecbor_error (rc);
         return -1;
       }
-      
-      print_ecbor_item (&item, 0);
+
+      rc = print_ecbor_item (&item, 0, "");
+      if (rc != ECBOR_OK) {
+        print_ecbor_error (rc);
+        return -1;
+      }
     }
   }
   

@@ -236,6 +236,9 @@ ecbor_get_tag_item (ecbor_item_t *tag, ecbor_item_t *arr_item);
 #define ECBOR_GET_TYPE(i) \
   ((i).major_type)
 
+#define ECBOR_IS_INDEFINITE(i) \
+  ((i).is_indefinite)
+
 #define ECBOR_IS_NINT(i) \
   ((i).major_type == ECBOR_MT_NINT)
 #define ECBOR_IS_UINT(i) \

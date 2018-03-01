@@ -112,7 +112,7 @@ ecbor_get_array_item (ecbor_item_t *array, uint64_t index,
     return rc;
   }
   
-  for (i = 0; i < index+1; i ++) {
+  for (i = 0; i <= index; i ++) {
     rc = ecbor_decode (&context, item);
     if (rc != ECBOR_OK) {
       if (rc == ECBOR_END_OF_BUFFER) {
@@ -137,7 +137,7 @@ ecbor_get_map_item (ecbor_item_t *map, uint64_t index, ecbor_item_t *key,
   if (!map) {
     return ECBOR_ERR_NULL_MAP;
   }
-  if (map->major_type != ECBOR_MT_ARRAY) {
+  if (map->major_type != ECBOR_MT_MAP) {
     return ECBOR_ERR_INVALID_TYPE;
   }
   if (map->length <= (index * 2)) {
@@ -152,7 +152,7 @@ ecbor_get_map_item (ecbor_item_t *map, uint64_t index, ecbor_item_t *key,
     return rc;
   }
   
-  for (i = 0; i < index; i ++) {
+  for (i = 0; i <= index; i ++) {
     rc = ecbor_decode (&context, key);
     if (rc != ECBOR_OK) {
       if (rc == ECBOR_END_OF_BUFFER) {
