@@ -400,8 +400,14 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
           ecbor_item_t child;
 
           /* not in streamed mode; compute size so we can advance */
-          return ecbor_decode_next_internal (context, &child, false,
-                                             ECBOR_MT_UNDEFINED);
+          rc = ecbor_decode_next_internal (context, &child, false,
+                                           ECBOR_MT_UNDEFINED);
+          if (rc != ECBOR_OK) {
+            return rc;
+          }
+
+          /* add child size to item size */
+          item->size += child.size;
         }
       }
       break;

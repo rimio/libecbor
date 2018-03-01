@@ -128,7 +128,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
         } else {
           printf ("'");
           for (i = 0; i < len; i ++) {
-            printf("%2x", val[i]);
+            printf("%02x", val[i]);
           }
           printf ("'\n");
         }
@@ -154,7 +154,10 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
             return rc;
           }
 
-          print_ecbor_item (&child, level+1, "");
+          rc = print_ecbor_item (&child, level+1, "");
+          if (rc != ECBOR_OK) {
+            return rc;
+          }
         }
       }
       break;
@@ -190,6 +193,30 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
           if (rc != ECBOR_OK) {
             return rc;
           }
+        }
+      }
+      break;
+
+    case ECBOR_MT_TAG:
+      {
+        int64_t val;
+        ecbor_item_t child;
+        
+        rc = ecbor_get_value (item, (void *) &val);
+        if (rc != ECBOR_OK) {
+          return rc;
+        }
+        
+        printf ("[TAG] value %lld\n", (long long int)val);
+
+        rc = ecbor_get_tag_item (item, &child);
+        if (rc != ECBOR_OK) {
+          return rc;
+        }
+
+        rc = print_ecbor_item (&child, level+1, "");
+        if (rc != ECBOR_OK) {
+          return rc;
         }
       }
       break;

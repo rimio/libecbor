@@ -235,14 +235,14 @@ ecbor_get_tag_item (ecbor_item_t *tag, ecbor_item_t *item)
   if (!tag) {
     return ECBOR_ERR_NULL_ITEM;
   }
-  if (tag->major_type != ECBOR_MT_ARRAY) {
+  if (tag->major_type != ECBOR_MT_TAG) {
     return ECBOR_ERR_INVALID_TYPE;
   }
   if (!item) {
     return ECBOR_ERR_NULL_VALUE;
   }
 
-  rc = ecbor_initialize_decode (&context, tag->value.items, tag->size);
+  rc = ecbor_initialize_decode (&context, tag->value.tag.child, tag->size);
   if (rc != ECBOR_OK) {
     return rc;
   }
