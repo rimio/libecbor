@@ -61,7 +61,10 @@ typedef enum {
  * CBOR major types
  */
 typedef enum {
-  ECBOR_MT_UNDEFINED  = -1,
+  /* first type, used for bounds checking */
+  ECBOR_MT_FIRST      = 0,
+
+  /* Major types as defined in the RFC */
   ECBOR_MT_UINT       = 0,
   ECBOR_MT_NINT       = 1,
   ECBOR_MT_BSTR       = 2,
@@ -69,20 +72,31 @@ typedef enum {
   ECBOR_MT_ARRAY      = 4,
   ECBOR_MT_MAP        = 5,
   ECBOR_MT_TAG        = 6,
-  ECBOR_MT_SPECIAL    = 7,
+  ECBOR_MT_SPECIAL    = 7, /* this will be translated to a custom type */
+  
+  /* Custom types */
+  ECBOR_MT_UNDEFINED  = -1,
+  ECBOR_MT_FP16       = 8,
+  ECBOR_MT_FP32       = 9,
+  ECBOR_MT_FP64       = 10,
+
+  /* last code, used for bounds checking */
+  ECBOR_MT_LAST       = 10
 } ecbor_major_type_t;
 
 /*
  * CBOR Item
  */
 typedef struct {
-  /* major type of item */
+  /* major type and additional info of item */
   ecbor_major_type_t major_type;
   
   /* value */
   union {
     uint64_t uinteger;
     int64_t integer;
+    float fp32;
+    double fp64;
     struct {
       uint64_t tag_value;
       const uint8_t *child;
@@ -255,6 +269,14 @@ ecbor_get_tag_item (ecbor_item_t *tag, ecbor_item_t *arr_item);
   ((i).major_type == ECBOR_MT_MAP)
 #define ECBOR_IS_TAG(i) \
   ((i).major_type == ECBOR_MT_TAG)
+#define ECBOR_IS_FP32(i) \
+  ((i).major_type == ECBOR_MT_FP32)
+#define ECBOR_IS_FLOAT(i) \
+  ECBOR_IS_FP32(i)
+#define ECBOR_IS_FP64(i) \
+  ((i).major_type == ECBOR_MT_FP64)
+#define ECBOR_IS_DOUBLE(i) \
+  ECBOR_IS_FP64(i)
 
 #define ECBOR_GET_INT(i) \
   ((i).value.integer)

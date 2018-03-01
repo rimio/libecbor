@@ -145,6 +145,56 @@ ecbor_decode_uint (ecbor_decode_context_t *context,
   return ECBOR_OK;
 }
 
+static inline ecbor_error_t
+ecbor_decode_fp32 (ecbor_decode_context_t *context,
+                   float *value,
+                   uint64_t *size)
+{
+  /* compute storage size */
+  (*size) = sizeof (float);
+  if (context->bytes_left < (*size)) {
+    return ECBOR_ERR_INVALID_END_OF_BUFFER;
+  }
+
+  /* read actual value */
+  (*value) =
+    ecbor_fp32_from_big_endian (*((float *) context->in_position));
+  
+  /* advance buffer */
+  context->in_position += (*size);
+  context->bytes_left -= (*size);
+  
+  /* meter the first byte */
+  (*size) ++;
+  
+  return ECBOR_OK;
+}
+
+static inline ecbor_error_t
+ecbor_decode_fp64 (ecbor_decode_context_t *context,
+                   double *value,
+                   uint64_t *size)
+{
+  /* compute storage size */
+  (*size) = sizeof (double);
+  if (context->bytes_left < (*size)) {
+    return ECBOR_ERR_INVALID_END_OF_BUFFER;
+  }
+
+  /* read actual value */
+  (*value) =
+    ecbor_fp64_from_big_endian (*((double *) context->in_position));
+
+  /* advance buffer */
+  context->in_position += (*size);
+  context->bytes_left -= (*size);
+  
+  /* meter the first byte */
+  (*size) ++;
+  
+  return ECBOR_OK;
+}
+
 static ecbor_error_t
 ecbor_decode_next_internal (ecbor_decode_context_t *context,
                             ecbor_item_t *item,
@@ -417,7 +467,22 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
         /* stop code */
         item->size = 1;
         return ECBOR_END_OF_INDEFINITE;
+      } else if (additional <= ECBOR_ADDITIONAL_1BYTE) {
+        return ecbor_decode_uint (context, &item->value.uinteger, &item->size,
+                                  additional);
+      } else if (additional == ECBOR_ADDITIONAL_2BYTE) {
+        /* currently we do not support half float */
+        return ECBOR_ERR_CURRENTLY_NOT_SUPPORTED;
+      } else if (additional == ECBOR_ADDITIONAL_4BYTE) {
+        /* floating point 32bit */
+        item->major_type = ECBOR_MT_FP32;
+        return ecbor_decode_fp32 (context, &item->value.fp32, &item->size);
+      } else if (additional == ECBOR_ADDITIONAL_8BYTE) {
+        /* floating point 64bit */
+        item->major_type = ECBOR_MT_FP64;
+        return ecbor_decode_fp64 (context, &item->value.fp64, &item->size);
       } else {
+        /* currently unassigned according to RFC */
         return ECBOR_ERR_CURRENTLY_NOT_SUPPORTED;
       }
       break;

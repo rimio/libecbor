@@ -221,6 +221,32 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
       }
       break;
 
+    case ECBOR_MT_FP32:
+      {
+        float val;
+        
+        rc = ecbor_get_value (item, (void *) &val);
+        if (rc != ECBOR_OK) {
+          return rc;
+        }
+        
+        printf ("[FP32] value %f\n", val);
+      }
+      break;
+
+    case ECBOR_MT_FP64:
+      {
+        double val;
+        
+        rc = ecbor_get_value (item, (void *) &val);
+        if (rc != ECBOR_OK) {
+          return rc;
+        }
+        
+        printf ("[FP64] value %f\n", val);
+      }
+      break;
+
     default:
       printf ("[UNKNOWN]\n");
       break;

@@ -58,14 +58,40 @@ ecbor_uint64_from_big_endian (uint64_t value)
 #endif
 }
 
+extern float
+ecbor_fp32_from_big_endian (float value)
+{
+#if __BYTE_ORDER__ && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+  return value;
+#elif __BYTE_ORDER__ && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+  uint32_t r = ecbor_uint32_from_big_endian(*((uint32_t *) &value));
+  return *((float *) &r);
+#else
+  #error "Endianness not supported!"
+#endif
+}
+
+extern double
+ecbor_fp64_from_big_endian (double value)
+{
+#if __BYTE_ORDER__ && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+  return value;
+#elif __BYTE_ORDER__ && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+  uint64_t r = ecbor_uint64_from_big_endian(*((uint64_t *) &value));
+  return *((double *) &r);
+#else
+  #error "Endianness not supported!"
+#endif
+}
+
 extern ecbor_major_type_t
 ecbor_get_type (ecbor_item_t *item)
 {
   if (!item) {
     return ECBOR_MT_UNDEFINED;
   }
-  if (item->major_type < ECBOR_MT_UINT
-      || item->major_type > ECBOR_MT_SPECIAL) {
+  if (item->major_type < ECBOR_MT_FIRST
+      || item->major_type > ECBOR_MT_LAST) {
     return ECBOR_MT_UNDEFINED;
   }
   return item->major_type;
@@ -100,6 +126,17 @@ ecbor_get_value (ecbor_item_t *item, void *value)
 
     case ECBOR_MT_TAG:
       *((uint64_t *)value) = item->value.tag.tag_value;
+      break;
+    
+    case ECBOR_MT_FP16:
+      return ECBOR_ERR_CURRENTLY_NOT_SUPPORTED;
+
+    case ECBOR_MT_FP32:
+      *((float *)value) = item->value.fp32;
+      break;
+
+    case ECBOR_MT_FP64:
+      *((double *)value) = item->value.fp64;
       break;
 
     default:

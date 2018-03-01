@@ -37,4 +37,10 @@ ecbor_uint32_from_big_endian (uint32_t value);
 extern uint64_t
 ecbor_uint64_from_big_endian (uint64_t value);
 
+extern float
+ecbor_fp32_from_big_endian (float value);
+
+extern double
+ecbor_fp64_from_big_endian (double value);
+
 #endif

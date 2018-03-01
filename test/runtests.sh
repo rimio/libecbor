@@ -24,7 +24,7 @@ for f in files/appendix_a/*.bin; do
   ../bin/ecbor-describe $f > $result_file 2>/dev/null
   rc=$?
 
-  if [ ! -f $result_file ] || [ ! -f $answer_file ] || [ ! $rc -eq 0 ] || [ "$(diff $answer_file $result_file 2>/dev/null)" != "" ]; then
+  if [ ! -f $result_file ] || [ ! -f $answer_file ] || [ "$(diff $answer_file $result_file 2>/dev/null)" != "" ]; then
     fail=$(($fail + 1))
     status=$FAIL_MSG
   else
