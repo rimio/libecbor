@@ -67,7 +67,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
           return rc;
         }
         
-        printf ("[NINT] value %d\n", (int)val);
+        printf ("[NINT] value %lld\n", (long long int)val);
       }
       break;
 
@@ -80,7 +80,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
           return rc;
         }
         
-        printf ("[UINT] value %u\n", (unsigned int) val);
+        printf ("[UINT] value %llu\n", (unsigned long long int) val);
       }
       break;
     

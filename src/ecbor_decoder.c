@@ -116,15 +116,18 @@ ecbor_decode_uint (ecbor_decode_context_t *context,
         break;
 
       case ECBOR_ADDITIONAL_2BYTE:
-        (*value) = *((uint16_t *) context->in_position);
+        (*value) =
+          ecbor_uint16_from_big_endian (*((uint16_t *) context->in_position));
         break;
 
       case ECBOR_ADDITIONAL_4BYTE:
-        (*value) = *((uint32_t *) context->in_position);
+        (*value) =
+          ecbor_uint32_from_big_endian (*((uint32_t *) context->in_position));
         break;
 
       case ECBOR_ADDITIONAL_8BYTE:
-        (*value) = *((uint64_t *) context->in_position);
+        (*value) =
+          ecbor_uint64_from_big_endian (*((uint64_t *) context->in_position));
         break;
 
       default:

@@ -8,6 +8,8 @@
 #ifndef _ECBOR_INTERNAL_H_
 #define _ECBOR_INTERNAL_H_
 
+#include <stdint.h>
+
 /* Don't rely on <stddef.h> for this */
 #define NULL 0
 #define false 0
@@ -22,5 +24,17 @@ enum {
   
   ECBOR_ADDITIONAL_INDEFINITE         = 31
 };
+
+/*
+ * Endianness
+ */
+extern uint16_t
+ecbor_uint16_from_big_endian (uint16_t value);
+
+extern uint32_t
+ecbor_uint32_from_big_endian (uint32_t value);
+
+extern uint64_t
+ecbor_uint64_from_big_endian (uint64_t value);
 
 #endif
