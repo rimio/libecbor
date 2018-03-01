@@ -9,9 +9,9 @@
 #define _ECBOR_INTERNAL_H_
 
 #include <stdint.h>
+#include <stddef.h>
 
-/* Don't rely on <stddef.h> for this */
-#define NULL 0
+/* Don't rely on <stdbool.h> for this */
 #define false 0
 #define true 1
 
@@ -37,6 +37,36 @@ enum {
   ECBOR_SIMPLE_NULL                   = 22,
   ECBOR_SIMPLE_UNDEFINED              = 23
 };
+
+/* Internal checks. Most of these macros rely on the function returning an
+   error code, and a 'rc' value being declared locally */
+#define ECBOR_INTERNAL_CHECK_ITEM_PTR(i)  \
+  {                                       \
+    if (!(i)) {                           \
+      return ECBOR_ERR_NULL_ITEM;         \
+    }                                     \
+  }
+
+#define ECBOR_INTERNAL_CHECK_VALUE_PTR(v) \
+  {                                       \
+    if (!(v)) {                           \
+      return ECBOR_ERR_NULL_VALUE;        \
+    }                                     \
+  }
+
+#define ECBOR_INTERNAL_CHECK_TYPE(t1, ref)  \
+  {                                         \
+    if ((t1) != (ref)) {                    \
+      return ECBOR_ERR_INVALID_TYPE;        \
+    }                                       \
+  }
+
+#define ECBOR_INTERNAL_CHECK_BOUNDS(index, limit) \
+  {                                               \
+    if ((index) >= (limit)) {                     \
+      return ECBOR_ERR_INDEX_OUT_OF_BOUNDS;       \
+    }                                             \
+  }
 
 /*
  * Endianness

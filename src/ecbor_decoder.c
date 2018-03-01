@@ -8,10 +8,28 @@
 #include "ecbor.h"
 #include "ecbor_internal.h"
 
+static ecbor_item_t null_item = {
+  .type = ECBOR_TYPE_NONE,
+  .value = {
+    .tag = {
+      .tag_value = 0,
+      .child = NULL
+    }
+  },
+  .size = 0,
+  .length = 0,
+  .is_indefinite = 0,
+  .parent = NULL,
+  .child = NULL,
+  .next = NULL,
+  .prev = NULL,
+  .index = 0
+};
+
 static ecbor_error_t
 ecbor_initialize_decode_internal (ecbor_decode_context_t *context,
                                   const uint8_t *buffer,
-                                  uint64_t buffer_size)
+                                  size_t buffer_size)
 {
   if (!context) {
     return ECBOR_ERR_NULL_CONTEXT;
@@ -29,7 +47,7 @@ ecbor_initialize_decode_internal (ecbor_decode_context_t *context,
 ecbor_error_t
 ecbor_initialize_decode (ecbor_decode_context_t *context,
                          const uint8_t *buffer,
-                         uint64_t buffer_size)
+                         size_t buffer_size)
 {
   ecbor_error_t rc =
     ecbor_initialize_decode_internal (context, buffer, buffer_size);
@@ -39,9 +57,9 @@ ecbor_initialize_decode (ecbor_decode_context_t *context,
   }
 
   context->mode = ECBOR_MODE_DECODE;
-  context->nodes = NULL;
-  context->node_capacity = 0;
-  context->n_nodes = 0;
+  context->items = NULL;
+  context->item_capacity = 0;
+  context->n_items = 0;
   
   return ECBOR_OK;
 }
@@ -49,7 +67,7 @@ ecbor_initialize_decode (ecbor_decode_context_t *context,
 ecbor_error_t
 ecbor_initialize_decode_streamed (ecbor_decode_context_t *context,
                                   const uint8_t *buffer,
-                                  uint64_t buffer_size)
+                                  size_t buffer_size)
 {
   ecbor_error_t rc =
     ecbor_initialize_decode_internal (context, buffer, buffer_size);
@@ -59,9 +77,9 @@ ecbor_initialize_decode_streamed (ecbor_decode_context_t *context,
   }
   
   context->mode = ECBOR_MODE_DECODE_STREAMED;
-  context->nodes = NULL;
-  context->node_capacity = 0;
-  context->n_nodes = 0;
+  context->items = NULL;
+  context->item_capacity = 0;
+  context->n_items = 0;
   
   return ECBOR_OK;
 }
@@ -69,9 +87,9 @@ ecbor_initialize_decode_streamed (ecbor_decode_context_t *context,
 ecbor_error_t
 ecbor_initialize_decode_tree (ecbor_decode_context_t *context,
                               const uint8_t *buffer,
-                              uint64_t buffer_size,
-                              ecbor_node_t *node_buffer,
-                              uint64_t node_capacity)
+                              size_t buffer_size,
+                              ecbor_item_t *item_buffer,
+                              size_t item_capacity)
 {
   ecbor_error_t rc =
     ecbor_initialize_decode_internal (context, buffer, buffer_size);
@@ -80,14 +98,14 @@ ecbor_initialize_decode_tree (ecbor_decode_context_t *context,
     return rc;
   }
   
-  if (!node_buffer) {
-    return ECBOR_ERR_NULL_NODE_BUFFER;
+  if (!item_buffer) {
+    return ECBOR_ERR_NULL_ITEM_BUFFER;
   }
   
   context->mode = ECBOR_MODE_DECODE_TREE;
-  context->nodes = node_buffer;
-  context->node_capacity = node_capacity;
-  context->n_nodes = 0;
+  context->items = item_buffer;
+  context->item_capacity = item_capacity;
+  context->n_items = 0;
   
   return ECBOR_OK;
 }
@@ -95,7 +113,7 @@ ecbor_initialize_decode_tree (ecbor_decode_context_t *context,
 static inline ecbor_error_t
 ecbor_decode_uint (ecbor_decode_context_t *context,
                    uint64_t *value,
-                   uint64_t *size,
+                   size_t *size,
                    uint8_t additional)
 {
   if (additional < 24) {
@@ -148,7 +166,7 @@ ecbor_decode_uint (ecbor_decode_context_t *context,
 static inline ecbor_error_t
 ecbor_decode_fp32 (ecbor_decode_context_t *context,
                    float *value,
-                   uint64_t *size)
+                   size_t *size)
 {
   /* compute storage size */
   (*size) = sizeof (float);
@@ -173,7 +191,7 @@ ecbor_decode_fp32 (ecbor_decode_context_t *context,
 static inline ecbor_error_t
 ecbor_decode_fp64 (ecbor_decode_context_t *context,
                    double *value,
-                   uint64_t *size)
+                   size_t *size)
 {
   /* compute storage size */
   (*size) = sizeof (double);
@@ -221,13 +239,13 @@ ecbor_decode_simple_value (ecbor_item_t *item)
   return ECBOR_OK;
 }
 
-static ecbor_error_t
+static __attribute__((noinline)) ecbor_error_t
 ecbor_decode_next_internal (ecbor_decode_context_t *context,
                             ecbor_item_t *item,
                             int8_t is_chunk,
                             ecbor_type_t chunk_mtype)
 {
-  unsigned int additional;
+  uint8_t additional;
 
   if (context->bytes_left == 0) {
     return ECBOR_END_OF_BUFFER;
@@ -240,10 +258,7 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
   }
   
   /* clear item, just so we do not leave garbage on partial read */
-  item->type = ECBOR_TYPE_NONE;
-  item->size = 0;
-  item->length = 0;
-  item->is_indefinite = false;
+  (*item) = null_item;
   
   /* extract major type (most significant three bits) and additional info */
   item->type = (*context->in_position >> 5) & 0x07;
@@ -344,11 +359,15 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
         }
       } else {
         /* read size of buffer */
-        ecbor_error_t rc = ecbor_decode_uint (context, &item->length,
-                                              &item->size, additional);
+        uint64_t len;
+        ecbor_error_t rc = ecbor_decode_uint (context, &len, &item->size,
+                                              additional);
         if (rc != ECBOR_OK) {
           return rc;
         }
+        /* if sizeof(size_t) < sizeof(uint64_t), and payload is >4GB, we're
+           fucked */
+        item->length = len;
 
         /* advance */
         if (context->bytes_left < item->length) {
@@ -413,12 +432,18 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
           }
         }
       } else {
+        uint64_t len;
+
         /* read size of map or array */
-        ecbor_error_t rc = ecbor_decode_uint (context, &item->length,
+        ecbor_error_t rc = ecbor_decode_uint (context, &len,
                                               &item->size, additional);
         if (rc != ECBOR_OK) {
           return rc;
         }
+        
+        /* improbable to have a map larger than 4M, but if we do and size_t is
+           less than 64bit, this will create problems */
+        item->length = len;
         
         /* keep buffer pointer from current pointer */
         item->value.items = context->in_position;
@@ -432,7 +457,7 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
         if (context->mode != ECBOR_MODE_DECODE_STREAMED) {
           ecbor_item_t child;
           ecbor_error_t rc;
-          uint64_t child_no;
+          size_t child_no;
 
           /* not in streamed mode; compute size so we can advance */
           for (child_no = 0; child_no < item->length; child_no ++) {
@@ -558,126 +583,210 @@ ecbor_decode (ecbor_decode_context_t *context, ecbor_item_t *item)
 }
 
 extern ecbor_error_t
-ecbor_decode_tree (ecbor_decode_context_t *context)
+ecbor_decode_tree (ecbor_decode_context_t *context, ecbor_item_t **root)
 {
   ecbor_error_t rc = ECBOR_OK;
-  ecbor_node_t *curr_node = NULL, *prev_node = NULL, *par_node = NULL;
+  ecbor_item_t *curr_node = NULL, *new_node = NULL;
+  uint8_t link_as_sibling = 0;
   
   if (!context) {
     return ECBOR_ERR_NULL_CONTEXT;
   }
+  if (!root) {
+    return ECBOR_ERR_NULL_ITEM;
+  }
+  if (context->mode != ECBOR_MODE_DECODE_TREE) {
+    return ECBOR_ERR_WRONG_MODE;
+  }
   
   /* initialization */
-  context->n_nodes = 0;
+  context->n_items = 0;
+  (*root) = NULL;
   
   /* step into streamed mode; some of the semantic checks will be done here */
   context->mode = ECBOR_MODE_DECODE_STREAMED;
 
   /* consume until end of buffer or error */
-  while (rc != ECBOR_OK) {
+  /* TODO: below code is a mess; must be refactored for brevity */
+  while (rc == ECBOR_OK) {
 
     /* allocate new node */
-    if (context->n_nodes >= context->node_capacity) {
-      rc = ECBOR_ERR_END_OF_NODE_BUFFER;
+    if (context->n_items >= context->item_capacity) {
+      rc = ECBOR_ERR_END_OF_ITEM_BUFFER;
       goto end;
     }
 
-    curr_node = &context->nodes[context->n_nodes];
-    curr_node->next = NULL;
-    curr_node->prev = NULL;
-    curr_node->parent = NULL;
-    curr_node->child = NULL;
-    context->n_nodes ++;
+    new_node = &context->items[context->n_items];
+    context->n_items ++;
     
     /* consume next item */
-    rc = ecbor_decode_next_internal (context, &curr_node->item, false,
+    rc = ecbor_decode_next_internal (context, new_node, false,
                                      ECBOR_TYPE_NONE);
+    if (rc != ECBOR_OK && rc != ECBOR_END_OF_INDEFINITE) {
+      /* some kind of error */
+      goto end;
+    }
 
-    /* handle end of indefinite */
-    if (rc == ECBOR_END_OF_INDEFINITE) {
-      if ((!par_node)
-          || (par_node->item.type != ECBOR_TYPE_MAP
-              && par_node->item.type != ECBOR_TYPE_ARRAY)
-          || (!par_node->item.is_indefinite)) {
-        /* we are not in an indefinite map or array */
+    if (curr_node) {
+      if (curr_node->type == ECBOR_TYPE_MAP
+           || curr_node->type == ECBOR_TYPE_ARRAY) {
+        /*
+         * New node may be either sibling or child
+         */
+
+        /* handle end of indefinite arrays */
+        if (rc == ECBOR_END_OF_INDEFINITE) {
+          if (curr_node->length == 0 && curr_node->parent
+              && (curr_node->parent->type == ECBOR_TYPE_ARRAY
+                  || curr_node->parent->type == ECBOR_TYPE_MAP)) {
+            /* if we're in a zero-length array or map, this stop code may refer
+               to the parent */
+            curr_node = curr_node->parent;
+          }
+
+          if (!curr_node->is_indefinite) {
+            /* this array is not indefinite */
+            rc = ECBOR_ERR_INVALID_STOP_CODE;
+            goto end;
+          }
+
+          /* end of indefinite empty array */
+          link_as_sibling = 1;
+          context->n_items --;
+          rc = ECBOR_OK;
+          continue;
+        }
+
+        /* finish any definite arrays or maps */
+        while (curr_node->parent
+               && (curr_node->parent->type == ECBOR_TYPE_ARRAY
+                   || curr_node->parent->type == ECBOR_TYPE_MAP)
+               && !curr_node->parent->is_indefinite
+               && (curr_node->index == curr_node->parent->length - 1)) {
+          /* make sure we're not finishing an array too early */
+          if ((curr_node->type == ECBOR_TYPE_ARRAY
+               || curr_node->type == ECBOR_TYPE_MAP)
+              && !curr_node->child) {
+            break;
+          }
+
+          /* one level up */
+          curr_node = curr_node->parent;
+          link_as_sibling = 1;
+        }
+
+        if (link_as_sibling) {
+          /* link new node as sibling */
+          new_node->index = curr_node->index + 1;
+          new_node->parent = curr_node->parent;
+          curr_node->next = new_node;
+          curr_node = new_node;
+        } else {
+          /* link as child */
+          new_node->index = 0;
+          new_node->parent = curr_node;
+          curr_node->child = new_node;
+          curr_node = new_node;
+        }
+        
+        /* count indefinite arrays and maps */
+        if (curr_node->parent
+            && (curr_node->parent->type == ECBOR_TYPE_ARRAY
+                || curr_node->parent->type == ECBOR_TYPE_MAP)
+            && curr_node->parent->is_indefinite) {
+          curr_node->parent->length ++;
+        }
+
+      } else {
+        /*
+         * New node is sibling of current node
+         */
+
+        /* finish any definite arrays or maps */
+        while (curr_node->parent
+               && (curr_node->parent->type == ECBOR_TYPE_ARRAY
+                   || curr_node->parent->type == ECBOR_TYPE_MAP)
+               && !curr_node->parent->is_indefinite
+               && (curr_node->index == curr_node->parent->length - 1)) {
+          /* one level up */
+          curr_node = curr_node->parent;
+        }
+
+        /* handle end of indefinite arrays */
+        if (rc == ECBOR_END_OF_INDEFINITE) {
+          if (!curr_node->parent
+              || (curr_node->parent->type != ECBOR_TYPE_ARRAY
+                  && curr_node->parent->type != ECBOR_TYPE_MAP)
+              || !curr_node->parent->is_indefinite) {
+            /* parent isn't indefinite; fail */
+            rc = ECBOR_ERR_INVALID_STOP_CODE;
+            goto end;
+          }
+          
+          /* we've ended an indefinite array or map; go one level up */
+          curr_node = curr_node->parent;
+          link_as_sibling = 1;
+          
+          /* reuse new_node */
+          context->n_items --;
+          rc = ECBOR_OK;
+          continue;
+        }
+        
+        /* link new node */
+        if (curr_node->type == ECBOR_TYPE_TAG && !curr_node->child) {
+          /* link as child; keep current node */
+          new_node->index = 0;
+          new_node->parent = curr_node;
+          curr_node->child = new_node;
+        } else {
+          /* link new node as sibling */
+          new_node->index = curr_node->index + 1;
+          new_node->parent = curr_node->parent;
+          curr_node->next = new_node;
+          curr_node = new_node;
+          /* count indefinite arrays and maps */
+          if (curr_node->parent
+              && (curr_node->parent->type == ECBOR_TYPE_ARRAY
+                  || curr_node->parent->type == ECBOR_TYPE_MAP)
+              && curr_node->parent->is_indefinite) {
+            curr_node->parent->length ++;
+          }
+        }
+      }
+    } else {
+      /*
+       * First node
+       */
+      if (rc == ECBOR_END_OF_INDEFINITE) {
+        /* can't have first item as stop code */
         rc = ECBOR_ERR_INVALID_STOP_CODE;
         goto end;
       }
       
-      if (par_node && par_node->item.type == ECBOR_TYPE_MAP
-          && prev_node && (prev_node->index % 2 == 0)) {
-        /* map must have even number of children */
-        rc = ECBOR_ERR_INVALID_KEY_VALUE_PAIR;
-        goto end;
-      }
-
-      /* jump up one level */
-      curr_node = par_node;
-      par_node = curr_node->parent;
-      prev_node = curr_node->prev;
-      
-      /* continue parsing */
-      rc = ECBOR_OK;
-      
-      /* ignore this item, reuse it later */
-      context->n_nodes --;
-      continue;
+      /* nothing to link, just keep it as current node */
+      new_node->index = 0;
+      curr_node = new_node;
     }
     
-    /* check return code */
-    if (rc == ECBOR_END_OF_BUFFER) {
-      if (par_node) {
-        /* we are not allowed to reach the end unless the item is top-level */
-        rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
-        goto end;
-      }
-    } else if (rc != ECBOR_OK) {
-      goto end;
-    }
-    
-    /* link in tree */
-    if (prev_node) {
-      prev_node->next = curr_node;
-      curr_node->prev = prev_node;
-    }
-    if (par_node) {
-      curr_node->parent = par_node;
-      if (!prev_node) {
-        par_node->child = curr_node;
-      }
-    }
-    
-    /* handle new children */
-    if (curr_node->item.type == ECBOR_TYPE_MAP
-        || curr_node->item.type == ECBOR_TYPE_ARRAY
-        || curr_node->item.type == ECBOR_TYPE_TAG) {
-      /* jump a level down */
-      par_node = curr_node;
-      prev_node = NULL;
-      continue;
-    }
-    
-    /* handle end of definite maps and arrays, and tags */
-    while (par_node
-           && (par_node->item.type == ECBOR_TYPE_MAP
-               || par_node->item.type == ECBOR_TYPE_ARRAY
-               || par_node->item.type == ECBOR_TYPE_TAG)
-           && !par_node->item.is_indefinite
-           && par_node->item.length == (curr_node->index + 1)) {
-      /* parent has filled all items, jump a level up */
-      curr_node = par_node;
-      par_node = curr_node->parent;
-      prev_node = curr_node->prev;
-    }
+    /* expire linking as sibling */
+    link_as_sibling = 0;
   }
 
 end:
   /* return to tree mode and return error code */
   context->mode = ECBOR_MODE_DECODE_TREE;
+
   rc = (rc == ECBOR_END_OF_BUFFER ? ECBOR_OK : rc);
   if (rc != ECBOR_OK) {
     /* make sure we don't expose garbage to user */
-    context->n_nodes = 0;
+    context->n_items = 0;
   }
+  
+  /* return root node */
+  if (context->n_items > 0) {
+    (*root) = &context->items[0];
+  }
+
   return rc;
 }

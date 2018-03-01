@@ -1,7 +1,7 @@
 [MAP] len 2 
-    key[0]: [STR] len 1  value 'a'
+    key[0]: [STR] len 1 value 'a'
     val[0]: [UINT] value 1
-    key[1]: [STR] len 1  value 'b'
+    key[1]: [STR] len 1 value 'b'
     val[1]: [ARRAY] len 2 
       [UINT] value 2
       [UINT] value 3

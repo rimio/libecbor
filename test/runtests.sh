@@ -20,21 +20,26 @@ echo "============================== APPENDIX A =============================="
 for f in files/appendix_a/*.bin; do
   answer_file=${f%.bin}.answer
   result_file=${f%.bin}.result
-  
-  ../bin/ecbor-describe $f > $result_file 2>/dev/null
-  rc=$?
 
-  if [ ! -f $result_file ] || [ ! -f $answer_file ] || [ "$(diff $answer_file $result_file 2>/dev/null)" != "" ]; then
-    fail=$(($fail + 1))
-    status=$FAIL_MSG
-  else
-    pass=$(($pass + 1))
-    status=$PASS_MSG
-  fi
-  
-  machine_indented=$(printf '%-67s' "$f")
-  machine_indented=${machine_indented// /.}
-  printf "%s %s\n" "$machine_indented" "$status"
+  declare -a opts=("" "--tree")
+
+  for opt in "${opts[@]}"; do
+    ../bin/ecbor-describe $opt $f > $result_file 2>/dev/null
+    rc=$?
+
+    if [ ! -f $result_file ] || [ ! -f $answer_file ] || [ "$(diff $answer_file $result_file 2>/dev/null)" != "" ]; then
+      fail=$(($fail + 1))
+      status=$FAIL_MSG
+    else
+      pass=$(($pass + 1))
+      status=$PASS_MSG
+    fi
+    
+    test_name="$f($opt)"
+    machine_indented=$(printf '%-67s' "$test_name")
+    machine_indented=${machine_indented// /.}
+    printf "%s %s\n" "$machine_indented" "$status"
+  done
 done
 echo "========================================================================"
 echo "Passed / Failed: ${pass}/${fail}"

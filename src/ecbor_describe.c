@@ -16,9 +16,16 @@
  * Command line arguments
  */
 static struct option long_options[] = {
+  { "tree", no_argument,       0, 't' },
   { "help", no_argument,       0, 'h' },
   { 0, 0, 0, 0 }
 };
+
+/*
+ * Item buffer for tree mode
+ */
+#define MAX_ITEMS 1024
+static ecbor_item_t items_buffer[MAX_ITEMS];
 
 void
 print_help (void);
@@ -35,6 +42,7 @@ print_help (void)
 {
   printf ("Usage: ecbor-describe [options] <filename>\n");
   printf ("  options:\n");
+  printf ("  -t, --tree     Use tree decoding mode\n");
   printf ("  -h, --help     Display this help message\n");
 }
 
@@ -62,7 +70,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
       {
         int64_t val;
         
-        rc = ecbor_get_value (item, (void *) &val);
+        rc = ecbor_get_int64 (item, &val);
         if (rc != ECBOR_OK) {
           return rc;
         }
@@ -75,7 +83,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
       {
         uint64_t val;
         
-        rc = ecbor_get_value (item, (void *) &val);
+        rc = ecbor_get_uint64 (item, &val);
         if (rc != ECBOR_OK) {
           return rc;
         }
@@ -86,15 +94,15 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
     
     case ECBOR_TYPE_STR:
       {
-        uint64_t len;
+        size_t len;
 
         rc = ecbor_get_length (item, &len);
         if (rc != ECBOR_OK) {
           return rc;
         }
 
-        if (ECBOR_IS_INDEFINITE (*item)) {
-          uint64_t nchunks;
+        if (ECBOR_IS_INDEFINITE (item)) {
+          size_t nchunks;
           
           rc = ecbor_get_str_chunk_count (item, &nchunks);
           if (rc != ECBOR_OK) {
@@ -132,15 +140,15 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
 
     case ECBOR_TYPE_BSTR:
       {
-        uint64_t len;
+        size_t len;
 
         rc = ecbor_get_length (item, &len);
         if (rc != ECBOR_OK) {
           return rc;
         }
 
-        if (ECBOR_IS_INDEFINITE (*item)) {
-          uint64_t nchunks;
+        if (ECBOR_IS_INDEFINITE (item)) {
+          size_t nchunks;
           
           rc = ecbor_get_bstr_chunk_count (item, &nchunks);
           if (rc != ECBOR_OK) {
@@ -185,7 +193,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
     
     case ECBOR_TYPE_ARRAY:
       {
-        uint64_t len, i;
+        size_t len, i;
 
         rc = ecbor_get_length (item, &len);
         if (rc != ECBOR_OK) {
@@ -193,7 +201,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
         }
 
         printf ("[ARRAY] len %u %s\n", (unsigned int) len,
-                (ECBOR_IS_INDEFINITE (*item) ? "(indefinite)" : ""));
+                (ECBOR_IS_INDEFINITE (item) ? "(indefinite)" : ""));
         for (i = 0; i < len; i ++) {
           ecbor_item_t child;
 
@@ -212,7 +220,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
 
     case ECBOR_TYPE_MAP:
       {
-        uint64_t len, i;
+        size_t len, i;
         char kv_msg[100] = { 0 };
 
         rc = ecbor_get_length (item, &len);
@@ -221,7 +229,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
         }
 
         printf ("[MAP] len %u %s\n", (unsigned int) len,
-                (ECBOR_IS_INDEFINITE (*item) ? "(indefinite)" : ""));
+                (ECBOR_IS_INDEFINITE (item) ? "(indefinite)" : ""));
         for (i = 0; i < len; i ++) {
           ecbor_item_t k, v;
 
@@ -247,10 +255,10 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
 
     case ECBOR_TYPE_TAG:
       {
-        int64_t val;
+        uint64_t val;
         ecbor_item_t child;
         
-        rc = ecbor_get_value (item, (void *) &val);
+        rc = ecbor_get_tag_value (item, &val);
         if (rc != ECBOR_OK) {
           return rc;
         }
@@ -273,7 +281,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
       {
         float val;
         
-        rc = ecbor_get_value (item, (void *) &val);
+        rc = ecbor_get_fp32 (item, &val);
         if (rc != ECBOR_OK) {
           return rc;
         }
@@ -286,7 +294,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
       {
         double val;
         
-        rc = ecbor_get_value (item, (void *) &val);
+        rc = ecbor_get_fp64 (item, &val);
         if (rc != ECBOR_OK) {
           return rc;
         }
@@ -297,9 +305,9 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
     
     case ECBOR_TYPE_BOOL:
       {
-        uint64_t val;
+        uint8_t val;
         
-        rc = ecbor_get_value (item, (void *) &val);
+        rc = ecbor_get_bool (item, &val);
         if (rc != ECBOR_OK) {
           return rc;
         }
@@ -333,17 +341,22 @@ main(int argc, char **argv)
   char *filename = NULL;
   unsigned char *cbor = NULL;
   long int cbor_length = 0;
+  int tree_mode = 0;
 
   /* parse arguments */
   while (1) {
     int option_index, c;
 
-    c = getopt_long (argc, argv, "h", long_options, &option_index);
+    c = getopt_long (argc, argv, "ht", long_options, &option_index);
     if (c == -1) {
       break;
     }
     
     switch (c) {
+      case 't':
+        tree_mode = 1;
+        break;
+
       default:
         print_help ();
         return 0;
@@ -406,10 +419,14 @@ main(int argc, char **argv)
   /* parse CBOR data */
   {
     ecbor_decode_context_t context;
-    ecbor_item_t item;
     ecbor_error_t rc;
 
-    rc = ecbor_initialize_decode (&context, cbor, cbor_length);
+    if (tree_mode) {
+      rc = ecbor_initialize_decode_tree (&context, cbor, cbor_length,
+                                         items_buffer, MAX_ITEMS);
+    } else {
+      rc = ecbor_initialize_decode (&context, cbor, cbor_length);
+    }
     if (rc != ECBOR_OK) {
       print_ecbor_error (rc);
       return -1;
@@ -417,20 +434,44 @@ main(int argc, char **argv)
     
     fprintf (stderr, "CBOR objects:\n");
     
-    while (1) {
-      rc = ecbor_decode (&context, &item);
+    if (tree_mode) {
+      /* decode all */
+      ecbor_item_t *item;
+
+      rc = ecbor_decode_tree (&context, &item);
       if (rc != ECBOR_OK) {
-        if (rc == ECBOR_END_OF_BUFFER) {
-          break;
-        }
         print_ecbor_error (rc);
         return -1;
       }
+      
+      while (item) {
+        rc = print_ecbor_item (item, 0, "");
+        if (rc != ECBOR_OK) {
+          print_ecbor_error (rc);
+          return -1;
+        }
+        
+        item = item->next;
+      }
+    } else {
+      /* normal mode, consume */
+      ecbor_item_t item;
 
-      rc = print_ecbor_item (&item, 0, "");
-      if (rc != ECBOR_OK) {
-        print_ecbor_error (rc);
-        return -1;
+      while (1) {
+        rc = ecbor_decode (&context, &item);
+        if (rc != ECBOR_OK) {
+          if (rc == ECBOR_END_OF_BUFFER) {
+            break;
+          }
+          print_ecbor_error (rc);
+          return -1;
+        }
+
+        rc = print_ecbor_item (&item, 0, "");
+        if (rc != ECBOR_OK) {
+          print_ecbor_error (rc);
+          return -1;
+        }
       }
     }
   }
