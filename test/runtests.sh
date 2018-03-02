@@ -11,13 +11,8 @@ FAIL_MSG=$(echo -e "\033[0;31mFAIL\033[0m")
 total_pass=0
 total_fail=0
 
-# Run Appendix A tests
-pass=0
-fail=0
-
-echo ""
-echo "============================== APPENDIX A =============================="
-for f in files/appendix_a/*.bin; do
+run_test() {
+  f=$1
   answer_file=${f%.bin}.answer
   result_file=${f%.bin}.result
 
@@ -40,6 +35,31 @@ for f in files/appendix_a/*.bin; do
     machine_indented=${machine_indented// /.}
     printf "%s %s\n" "$machine_indented" "$status"
   done
+}
+
+# Appendix A tests
+pass=0
+fail=0
+
+echo ""
+echo "============================== APPENDIX A =============================="
+for f in files/appendix_a/*.bin; do
+  run_test $f
+done
+echo "========================================================================"
+echo "Passed / Failed: ${pass}/${fail}"
+
+total_pass=$(($total_pass + $pass))
+total_fail=$(($total_fail + $fail))
+
+# Error cases tests
+pass=0
+fail=0
+
+echo ""
+echo "============================== ERROR CASE =============================="
+for f in files/error_cases/incomplete/*.bin; do
+  run_test $f
 done
 echo "========================================================================"
 echo "Passed / Failed: ${pass}/${fail}"
