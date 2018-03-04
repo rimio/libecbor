@@ -134,7 +134,6 @@ struct ecbor_item {
   ecbor_item_t *parent;
   ecbor_item_t *child; /* first child */
   ecbor_item_t *next; /* next in array or map */
-  ecbor_item_t *prev; /* ditto */
   size_t index; /* index in array or map */
 };
 

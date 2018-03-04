@@ -19,6 +19,7 @@ run_test() {
   declare -a opts=("" "--tree")
 
   for opt in "${opts[@]}"; do
+    rm -f $result_file
     ../bin/ecbor-describe $opt $f > $result_file 2>/dev/null
     rc=$?
 

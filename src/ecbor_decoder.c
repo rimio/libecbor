@@ -22,7 +22,6 @@ static ecbor_item_t null_item = {
   .parent = NULL,
   .child = NULL,
   .next = NULL,
-  .prev = NULL,
   .index = 0
 };
 
@@ -585,9 +584,17 @@ ecbor_decode (ecbor_decode_context_t *context, ecbor_item_t *item)
 extern ecbor_error_t
 ecbor_decode_tree (ecbor_decode_context_t *context, ecbor_item_t **root)
 {
+  enum {
+    CONSUME_NODE = 0,
+    ANALYZE_STOP_CODE,
+    LINK_FIRST_NODE,
+    LINK_NODE,
+    CHECK_END_OF_DEFINITE,
+    END
+  } state = CONSUME_NODE;
+  uint8_t last_was_stop_code = 0;
   ecbor_error_t rc = ECBOR_OK;
   ecbor_item_t *curr_node = NULL, *new_node = NULL;
-  uint8_t link_as_sibling = 0;
   
   if (!context) {
     return ECBOR_ERR_NULL_CONTEXT;
@@ -607,170 +614,161 @@ ecbor_decode_tree (ecbor_decode_context_t *context, ecbor_item_t **root)
   context->mode = ECBOR_MODE_DECODE_STREAMED;
 
   /* consume until end of buffer or error */
-  /* TODO: below code is a mess; must be refactored for brevity */
-  while (rc == ECBOR_OK) {
+  while (state != END) {
 
-    /* allocate new node */
-    if (context->n_items >= context->item_capacity) {
-      rc = ECBOR_ERR_END_OF_ITEM_BUFFER;
-      goto end;
-    }
+    /* state change */
+    switch (state) {
+      case CONSUME_NODE:
+        /* allocate new node */
+        if (context->n_items >= context->item_capacity) {
+          rc = ECBOR_ERR_END_OF_ITEM_BUFFER;
+          goto end;
+        }
 
-    new_node = &context->items[context->n_items];
-    context->n_items ++;
-    
-    /* consume next item */
-    rc = ecbor_decode_next_internal (context, new_node, false,
-                                     ECBOR_TYPE_NONE);
-    if (rc != ECBOR_OK && rc != ECBOR_END_OF_INDEFINITE) {
-      /* some kind of error */
-      goto end;
-    }
+        new_node = &context->items[context->n_items];
+        context->n_items ++;
 
-    if (curr_node) {
-      if (curr_node->type == ECBOR_TYPE_MAP
-           || curr_node->type == ECBOR_TYPE_ARRAY) {
-        /*
-         * New node may be either sibling or child
-         */
-
-        /* handle end of indefinite arrays */
+        /* consume next item */
+        rc = ecbor_decode_next_internal (context, new_node, false,
+                                         ECBOR_TYPE_NONE);
         if (rc == ECBOR_END_OF_INDEFINITE) {
-          if (curr_node->length == 0 && curr_node->parent
-              && (curr_node->parent->type == ECBOR_TYPE_ARRAY
-                  || curr_node->parent->type == ECBOR_TYPE_MAP)) {
-            /* if we're in a zero-length array or map, this stop code may refer
-               to the parent */
-            curr_node = curr_node->parent;
-          }
-
-          if (!curr_node->is_indefinite) {
-            /* this array is not indefinite */
-            rc = ECBOR_ERR_INVALID_STOP_CODE;
-            goto end;
-          }
-
-          /* end of indefinite empty array */
-          link_as_sibling = 1;
+          state = ANALYZE_STOP_CODE;
           context->n_items --;
           rc = ECBOR_OK;
-          continue;
-        }
-
-        /* finish any definite arrays or maps */
-        while (curr_node->parent
-               && (curr_node->parent->type == ECBOR_TYPE_ARRAY
-                   || curr_node->parent->type == ECBOR_TYPE_MAP)
-               && !curr_node->parent->is_indefinite
-               && (curr_node->index == curr_node->parent->length - 1)) {
-          /* make sure we're not finishing an array too early */
-          if ((curr_node->type == ECBOR_TYPE_ARRAY
-               || curr_node->type == ECBOR_TYPE_MAP)
-              && !curr_node->child) {
-            break;
-          }
-
-          /* one level up */
-          curr_node = curr_node->parent;
-          link_as_sibling = 1;
-        }
-
-        if (link_as_sibling) {
-          /* link new node as sibling */
-          new_node->index = curr_node->index + 1;
-          new_node->parent = curr_node->parent;
-          curr_node->next = new_node;
-          curr_node = new_node;
-        } else {
-          /* link as child */
-          new_node->index = 0;
-          new_node->parent = curr_node;
-          curr_node->child = new_node;
-          curr_node = new_node;
-        }
-        
-        /* count indefinite arrays and maps */
-        if (curr_node->parent
-            && (curr_node->parent->type == ECBOR_TYPE_ARRAY
-                || curr_node->parent->type == ECBOR_TYPE_MAP)
-            && curr_node->parent->is_indefinite) {
-          curr_node->parent->length ++;
-        }
-
-      } else {
-        /*
-         * New node is sibling of current node
-         */
-
-        /* finish any definite arrays or maps */
-        while (curr_node->parent
-               && (curr_node->parent->type == ECBOR_TYPE_ARRAY
-                   || curr_node->parent->type == ECBOR_TYPE_MAP)
-               && !curr_node->parent->is_indefinite
-               && (curr_node->index == curr_node->parent->length - 1)) {
-          /* one level up */
-          curr_node = curr_node->parent;
-        }
-
-        /* handle end of indefinite arrays */
-        if (rc == ECBOR_END_OF_INDEFINITE) {
-          if (!curr_node->parent
-              || (curr_node->parent->type != ECBOR_TYPE_ARRAY
-                  && curr_node->parent->type != ECBOR_TYPE_MAP)
-              || !curr_node->parent->is_indefinite) {
-            /* parent isn't indefinite; fail */
-            rc = ECBOR_ERR_INVALID_STOP_CODE;
+        } else if (rc == ECBOR_END_OF_BUFFER) {
+          /* check for bad end scenatios */
+          if (!curr_node) {
+            /* first node was stop code, bad end */
+            rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
             goto end;
           }
-          
-          /* we've ended an indefinite array or map; go one level up */
-          curr_node = curr_node->parent;
-          link_as_sibling = 1;
-          
-          /* reuse new_node */
-          context->n_items --;
-          rc = ECBOR_OK;
-          continue;
-        }
-        
-        /* link new node */
-        if (curr_node->type == ECBOR_TYPE_TAG && !curr_node->child) {
-          /* link as child; keep current node */
-          new_node->index = 0;
-          new_node->parent = curr_node;
-          curr_node->child = new_node;
+          if (curr_node->parent) {
+            /* we're not top level, bad end */
+            rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
+            goto end;
+          }
+          if (ECBOR_IS_TAG (curr_node) && !curr_node->child) {
+            /* unfinished tag, bad end */
+            rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
+            goto end;
+          }
+          if (ECBOR_IS_MAP (curr_node) || ECBOR_IS_ARRAY (curr_node)) {
+            if (ECBOR_IS_DEFINITE (curr_node) && !curr_node->child
+                && curr_node->length > 0) {
+              /* unfinished definite array or map, bad end */
+              rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
+              goto end;
+            }
+            if (ECBOR_IS_INDEFINITE (curr_node) && !last_was_stop_code) {
+              /* unfinished indefinite array or map, bad end */
+              rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
+              goto end;
+            }
+          }
+          /* done! */
+          state = END;
+        } else if (rc == ECBOR_OK) {
+          state = (curr_node ? LINK_NODE : LINK_FIRST_NODE);
         } else {
-          /* link new node as sibling */
-          new_node->index = curr_node->index + 1;
-          new_node->parent = curr_node->parent;
-          curr_node->next = new_node;
-          curr_node = new_node;
-          /* count indefinite arrays and maps */
-          if (curr_node->parent
-              && (curr_node->parent->type == ECBOR_TYPE_ARRAY
-                  || curr_node->parent->type == ECBOR_TYPE_MAP)
-              && curr_node->parent->is_indefinite) {
-            curr_node->parent->length ++;
+          /* some kind of error */
+          goto end;
+        }
+        break;
+
+      case ANALYZE_STOP_CODE:
+        if ((!ECBOR_IS_MAP (curr_node) && !ECBOR_IS_ARRAY (curr_node))
+            || ECBOR_IS_DEFINITE (curr_node)
+            || (ECBOR_IS_INDEFINITE (curr_node) && last_was_stop_code)) {
+          /* stop code refers to parent node */
+          curr_node = curr_node->parent;
+          if (!curr_node) {
+            rc = ECBOR_ERR_UNKNOWN;
+            goto end;
           }
         }
-      }
-    } else {
-      /*
-       * First node
-       */
-      if (rc == ECBOR_END_OF_INDEFINITE) {
-        /* can't have first item as stop code */
-        rc = ECBOR_ERR_INVALID_STOP_CODE;
+
+        if ((ECBOR_IS_MAP (curr_node) || ECBOR_IS_ARRAY (curr_node))
+            && ECBOR_IS_INDEFINITE (curr_node)) {
+          /* correct stop code */
+          state = CHECK_END_OF_DEFINITE;
+          /* set stop code flag; this needs to be reset when curr_node changes */
+          last_was_stop_code = 1;
+        } else {
+          rc = ECBOR_ERR_INVALID_STOP_CODE;
+          goto end;
+        }
+        break;
+
+      case LINK_FIRST_NODE:
+        /* first node, skip checks */
+        curr_node = new_node;
+        new_node->index = 0;
+        state = CONSUME_NODE;
+        break;
+
+      case LINK_NODE:
+        {
+          uint8_t is_unfinished_tag =
+            ECBOR_IS_TAG (curr_node) && !curr_node->child;
+          uint8_t is_unfinished_array_or_map =
+            (ECBOR_IS_ARRAY (curr_node) || ECBOR_IS_MAP (curr_node))
+            && ((ECBOR_IS_DEFINITE (curr_node) && (curr_node->length > 0)
+                 && !curr_node->child)
+                || (ECBOR_IS_INDEFINITE (curr_node) && !last_was_stop_code));
+
+          if (is_unfinished_tag || is_unfinished_array_or_map) {
+            /* link as child */
+            curr_node->child = new_node;
+            new_node->parent = curr_node;
+            new_node->index = 0;
+          } else {
+            /* link as sibling */
+            curr_node->next = new_node;
+            new_node->parent = curr_node->parent;
+            new_node->index = curr_node->index + 1;
+          }
+          
+          /* new current node */
+          curr_node = new_node;
+          last_was_stop_code = 0;
+          
+          /* check end of definite arrays and maps */
+          state = CHECK_END_OF_DEFINITE;
+        }
+        break;
+
+      case CHECK_END_OF_DEFINITE:
+        {
+          uint8_t is_unfinished_tag =
+            ECBOR_IS_TAG (curr_node) && !curr_node->child;
+          uint8_t is_unfinished_array_or_map =
+            (ECBOR_IS_ARRAY (curr_node) || ECBOR_IS_MAP (curr_node))
+            && ((ECBOR_IS_DEFINITE (curr_node) && (curr_node->length > 0)
+                 && !curr_node->child)
+                || (ECBOR_IS_INDEFINITE (curr_node) && !last_was_stop_code));
+
+          if (!is_unfinished_tag && !is_unfinished_array_or_map) {
+            while (curr_node->parent
+                   && (((ECBOR_IS_ARRAY (curr_node->parent) || ECBOR_IS_MAP (curr_node->parent))
+                        && ECBOR_IS_DEFINITE (curr_node->parent)
+                        && (curr_node->parent->length == (curr_node->index + 1)))
+                       ||
+                        (ECBOR_IS_TAG (curr_node->parent)))) {
+              /* up one level */
+              curr_node = curr_node->parent;
+              last_was_stop_code = 0;
+            }
+          }
+
+          /* consume next */
+          state = CONSUME_NODE;
+        }
+        break;
+
+      default:
+        rc = ECBOR_ERR_UNKNOWN;
         goto end;
-      }
-      
-      /* nothing to link, just keep it as current node */
-      new_node->index = 0;
-      curr_node = new_node;
     }
-    
-    /* expire linking as sibling */
-    link_as_sibling = 0;
   }
 
 end:
