@@ -12,6 +12,15 @@
 #include <stddef.h>
 
 /*
+ * Version
+ */
+#define ECBOR_VERSION_MAJOR @VERSION_MAJOR@
+#define ECBOR_VERSION_MINOR @VERSION_MINOR@
+#define ECBOR_VERSION_PATCH @VERSION_PATCH@
+
+#define ECBOR_VERSION "@VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@"
+
+/*
  * Error codes
  */
 typedef enum {

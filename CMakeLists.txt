@@ -2,6 +2,11 @@ cmake_minimum_required (VERSION 3.1)
 
 project (ecbor LANGUAGES C)
 
+# Version
+set (VERSION_MAJOR 0)
+set (VERSION_MINOR 1)
+set (VERSION_PATCH 0)
+
 # Options
 option (BUILD_DESCRIBE_TOOL "build ecbor-describe" ON)
 
@@ -21,9 +26,15 @@ set (INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
 
 include_directories (${INCLUDE_DIR} ${SOURCE_DIR})
 
+# Configurations
+configure_file (
+  "${INCLUDE_DIR}/ecbor.h.in"
+  "${INCLUDE_DIR}/ecbor.h"
+)
+
 # Source setup
 set (LIB_INCLUDES
-  "${PROJECT_SOURCE_DIR}/include/ecbor.h"
+  "${INCLUDE_DIR}/ecbor.h"
 )
 
 set (LIB_SOURCES
