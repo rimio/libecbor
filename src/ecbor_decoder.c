@@ -705,7 +705,10 @@ ecbor_decode_tree (ecbor_decode_context_t *context, ecbor_item_t **root)
           last_was_stop_code = 0;
           
           /* count indefinite arrays and maps */
-          if (curr_node->parent && (ECBOR_IS_ARRAY (curr_node->parent) || ECBOR_IS_MAP (curr_node->parent)) && ECBOR_IS_INDEFINITE (curr_node->parent)) {
+          if (curr_node->parent
+              && (ECBOR_IS_ARRAY (curr_node->parent)
+                  || ECBOR_IS_MAP (curr_node->parent))
+              && ECBOR_IS_INDEFINITE (curr_node->parent)) {
             curr_node->parent->length ++;
           }
           
