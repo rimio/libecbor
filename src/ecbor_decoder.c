@@ -590,6 +590,7 @@ ecbor_decode_tree (ecbor_decode_context_t *context, ecbor_item_t **root)
     LINK_FIRST_NODE,
     LINK_NODE,
     CHECK_END_OF_DEFINITE,
+    CHECK_END,
     END
   } state = CONSUME_NODE;
   uint8_t last_was_stop_code = 0;
@@ -636,37 +637,8 @@ ecbor_decode_tree (ecbor_decode_context_t *context, ecbor_item_t **root)
           context->n_items --;
           rc = ECBOR_OK;
         } else if (rc == ECBOR_END_OF_BUFFER) {
-          /* check for bad end scenatios */
-          if (!curr_node) {
-            /* first node was stop code, bad end */
-            rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
-            goto end;
-          }
-          if (curr_node->parent) {
-            /* we're not top level, bad end */
-            rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
-            goto end;
-          }
-          if (ECBOR_IS_TAG (curr_node) && !curr_node->child) {
-            /* unfinished tag, bad end */
-            rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
-            goto end;
-          }
-          if (ECBOR_IS_MAP (curr_node) || ECBOR_IS_ARRAY (curr_node)) {
-            if (ECBOR_IS_DEFINITE (curr_node) && !curr_node->child
-                && curr_node->length > 0) {
-              /* unfinished definite array or map, bad end */
-              rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
-              goto end;
-            }
-            if (ECBOR_IS_INDEFINITE (curr_node) && !last_was_stop_code) {
-              /* unfinished indefinite array or map, bad end */
-              rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
-              goto end;
-            }
-          }
-          /* done! */
-          state = END;
+          state = CHECK_END;
+          rc = ECBOR_OK;
         } else if (rc == ECBOR_OK) {
           state = (curr_node ? LINK_NODE : LINK_FIRST_NODE);
         } else {
@@ -732,6 +704,11 @@ ecbor_decode_tree (ecbor_decode_context_t *context, ecbor_item_t **root)
           curr_node = new_node;
           last_was_stop_code = 0;
           
+          /* count indefinite arrays and maps */
+          if (curr_node->parent && (ECBOR_IS_ARRAY (curr_node->parent) || ECBOR_IS_MAP (curr_node->parent)) && ECBOR_IS_INDEFINITE (curr_node->parent)) {
+            curr_node->parent->length ++;
+          }
+          
           /* check end of definite arrays and maps */
           state = CHECK_END_OF_DEFINITE;
         }
@@ -763,6 +740,41 @@ ecbor_decode_tree (ecbor_decode_context_t *context, ecbor_item_t **root)
           /* consume next */
           state = CONSUME_NODE;
         }
+        break;
+      
+      case CHECK_END:
+        /* check for bad end scenatios */
+        if (!curr_node) {
+          /* first node was stop code, bad end */
+          rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
+          goto end;
+        }
+        if (curr_node->parent) {
+          /* we're not top level, bad end */
+          rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
+          goto end;
+        }
+        if (ECBOR_IS_TAG (curr_node) && !curr_node->child) {
+          /* unfinished tag, bad end */
+          rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
+          goto end;
+        }
+        if (ECBOR_IS_MAP (curr_node) || ECBOR_IS_ARRAY (curr_node)) {
+          if (ECBOR_IS_DEFINITE (curr_node) && !curr_node->child
+              && curr_node->length > 0) {
+            /* unfinished definite array or map, bad end */
+            rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
+            goto end;
+          }
+          if (ECBOR_IS_INDEFINITE (curr_node) && !last_was_stop_code) {
+            /* unfinished indefinite array or map, bad end */
+            rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
+            goto end;
+          }
+        }
+
+        /* done! */
+        state = END;
         break;
 
       default:
