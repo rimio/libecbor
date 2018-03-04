@@ -31,6 +31,7 @@ typedef enum {
   ECBOR_ERR_NULL_ITEM                       = 20,
   
   ECBOR_ERR_WRONG_MODE                      = 30,
+  ECBOR_ERR_WONT_ENCODE_INDEFINITE          = 31,
 
   /* bounds errors */
   ECBOR_ERR_INVALID_END_OF_BUFFER           = 50,
@@ -82,12 +83,13 @@ typedef enum {
    * We keep value 7 reserved so there is no confusion. */
   
   /* Following types are translated from major type #7 */
-  ECBOR_TYPE_FP16       = 8,
-  ECBOR_TYPE_FP32       = 9,
-  ECBOR_TYPE_FP64       = 10,
-  ECBOR_TYPE_BOOL       = 11,
-  ECBOR_TYPE_NULL       = 12,
-  ECBOR_TYPE_UNDEFINED  = 13,
+  ECBOR_TYPE_STOP_CODE  = 8,
+  ECBOR_TYPE_FP16       = 9,
+  ECBOR_TYPE_FP32       = 10,
+  ECBOR_TYPE_FP64       = 11,
+  ECBOR_TYPE_BOOL       = 12,
+  ECBOR_TYPE_NULL       = 13,
+  ECBOR_TYPE_UNDEFINED  = 14,
 
   /* Last type, used for bounds checking */
   ECBOR_TYPE_LAST       = ECBOR_TYPE_UNDEFINED
@@ -100,7 +102,7 @@ typedef struct ecbor_item ecbor_item_t;
 struct ecbor_item {
   /* item type */
   ecbor_type_t type;
-  
+
   /* value */
   union {
     uint64_t uinteger;
@@ -144,7 +146,8 @@ typedef enum {
   ECBOR_MODE_DECODE           = 0,
   ECBOR_MODE_DECODE_STREAMED  = 1,
   ECBOR_MODE_DECODE_TREE      = 2,
-  ECBOR_MODE_ENCODE           = 3
+  ECBOR_MODE_ENCODE           = 3,
+  ECBOR_MODE_ENCODE_STREAMED  = 4
 } ecbor_mode_t;
 
 /*
@@ -186,6 +189,16 @@ typedef struct {
  * Initialization routines
  */
 extern ecbor_error_t
+ecbor_initialize_encode (ecbor_encode_context_t *context,
+                         uint8_t *buffer,
+                         size_t buffer_size);
+
+extern ecbor_error_t
+ecbor_initialize_encode_streamed (ecbor_encode_context_t *context,
+                                  uint8_t *buffer,
+                                  size_t buffer_size);
+
+extern ecbor_error_t
 ecbor_initialize_decode (ecbor_decode_context_t *context,
                          const uint8_t *buffer,
                          size_t buffer_size);
@@ -206,7 +219,8 @@ ecbor_initialize_decode_tree (ecbor_decode_context_t *context,
 /*
  * Encoding routines
  */
-
+extern ecbor_error_t
+ecbor_encode (ecbor_encode_context_t *context, ecbor_item_t *item);
 
 /*
  * Decoding routines
@@ -218,12 +232,66 @@ extern ecbor_error_t
 ecbor_decode_tree (ecbor_decode_context_t *context, ecbor_item_t **root);
 
 /*
- * Tree API
- */
-
-/*
  * Strict API
  */
+
+/* Simple builders */
+extern ecbor_item_t
+ecbor_int (int64_t value);
+
+extern ecbor_item_t
+ecbor_uint (int64_t value);
+
+extern ecbor_item_t
+ecbor_bstr (uint8_t *bstr, size_t length);
+
+extern ecbor_item_t
+ecbor_str (char *str, size_t length);
+
+extern ecbor_item_t
+ecbor_tag (ecbor_item_t *child, uint64_t tag_value);
+
+extern ecbor_item_t
+ecbor_fp32 (float value);
+
+extern ecbor_item_t
+ecbor_fp64 (double value);
+
+extern ecbor_item_t
+ecbor_bool (uint8_t value);
+
+extern ecbor_item_t
+ecbor_null (void);
+
+extern ecbor_item_t
+ecbor_undefined (void);
+
+
+/* Streamed encoding simple builders */
+extern ecbor_item_t
+ecbor_array_token (size_t length);
+
+extern ecbor_item_t
+ecbor_indefinite_array_token (void);
+
+extern ecbor_item_t
+ecbor_map_token (size_t length);
+
+extern ecbor_item_t
+ecbor_indefinite_map_token (void);
+
+extern ecbor_item_t
+ecbor_stop_code (void);
+
+
+/* Array and map builders */
+extern ecbor_error_t
+ecbor_array (ecbor_item_t *array, ecbor_item_t *items, size_t length);
+
+extern ecbor_error_t
+ecbor_map (ecbor_item_t *map, ecbor_item_t *keys, ecbor_item_t *values,
+           size_t length);
+
 
 /* Metadata */
 extern ecbor_type_t

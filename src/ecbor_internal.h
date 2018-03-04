@@ -22,6 +22,8 @@ enum {
 
 /* Additional value meanings */
 enum {
+  ECBOR_ADDITIONAL_LAST_INTEGER       = 23,
+
   ECBOR_ADDITIONAL_1BYTE              = 24,
   ECBOR_ADDITIONAL_2BYTE              = 25,
   ECBOR_ADDITIONAL_4BYTE              = 26,
@@ -38,8 +40,32 @@ enum {
   ECBOR_SIMPLE_UNDEFINED              = 23
 };
 
+/* Static item, for various initializations */
+static ecbor_item_t null_item = {
+  .type = ECBOR_TYPE_NONE,
+  .value = {
+    .tag = {
+      .tag_value = 0,
+      .child = NULL
+    }
+  },
+  .size = 0,
+  .length = 0,
+  .is_indefinite = 0,
+  .parent = NULL,
+  .child = NULL,
+  .next = NULL,
+  .index = 0
+};
+
 /* Internal checks. Most of these macros rely on the function returning an
    error code, and a 'rc' value being declared locally */
+#define ECBOR_INTERNAL_CHECK_CONTEXT_PTR(c) \
+  {                                         \
+    if (!(c)) {                             \
+      return ECBOR_ERR_NULL_CONTEXT;        \
+    }                                       \
+  }
 #define ECBOR_INTERNAL_CHECK_ITEM_PTR(i)  \
   {                                       \
     if (!(i)) {                           \
@@ -85,5 +111,28 @@ ecbor_fp32_from_big_endian (float value);
 
 extern double
 ecbor_fp64_from_big_endian (double value);
+
+
+extern uint16_t
+ecbor_uint16_to_big_endian (uint16_t value);
+
+extern uint32_t
+ecbor_uint32_to_big_endian (uint32_t value);
+
+extern uint64_t
+ecbor_uint64_to_big_endian (uint64_t value);
+
+extern float
+ecbor_fp32_to_big_endian (float value);
+
+extern double
+ecbor_fp64_to_big_endian (double value);
+
+
+/*
+ * Memory
+ */
+extern void
+ecbor_memcpy (void *dest, void *src, size_t num);
 
 #endif

@@ -90,6 +90,36 @@ ecbor_fp64_from_big_endian (double value)
 #endif
 }
 
+uint16_t
+ecbor_uint16_to_big_endian (uint16_t value)
+{
+  return ecbor_uint16_from_big_endian (value);
+}
+
+uint32_t
+ecbor_uint32_to_big_endian (uint32_t value)
+{
+  return ecbor_uint32_from_big_endian (value);
+}
+
+uint64_t
+ecbor_uint64_to_big_endian (uint64_t value)
+{
+  return ecbor_uint64_from_big_endian (value);
+}
+
+float
+ecbor_fp32_to_big_endian (float value)
+{
+  return ecbor_fp32_from_big_endian (value);
+}
+
+double
+ecbor_fp64_to_big_endian (double value)
+{
+  return ecbor_fp64_from_big_endian (value);
+}
+
 ecbor_type_t
 ecbor_get_type (ecbor_item_t *item)
 {
@@ -552,4 +582,19 @@ ecbor_get_bool (ecbor_item_t *item, uint8_t *value)
   
   (*value) = (uint8_t) item->value.uinteger;
   return ECBOR_OK;
+}
+
+void
+ecbor_memcpy (void *dest, void *src, size_t num)
+{
+  /* TODO: Replace with memcpy when platform supports */
+  /* TODO: Optimize */
+  while (num > 4) {
+    *((uint32_t *) dest) = *((uint32_t *) src);
+    num -= 4;
+  }
+  while (num) {
+    *((uint8_t *) dest) = *((uint8_t *) src);
+    num --;
+  }
 }

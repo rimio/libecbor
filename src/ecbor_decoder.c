@@ -8,31 +8,12 @@
 #include "ecbor.h"
 #include "ecbor_internal.h"
 
-static ecbor_item_t null_item = {
-  .type = ECBOR_TYPE_NONE,
-  .value = {
-    .tag = {
-      .tag_value = 0,
-      .child = NULL
-    }
-  },
-  .size = 0,
-  .length = 0,
-  .is_indefinite = 0,
-  .parent = NULL,
-  .child = NULL,
-  .next = NULL,
-  .index = 0
-};
-
 static ecbor_error_t
 ecbor_initialize_decode_internal (ecbor_decode_context_t *context,
                                   const uint8_t *buffer,
                                   size_t buffer_size)
 {
-  if (!context) {
-    return ECBOR_ERR_NULL_CONTEXT;
-  }
+  ECBOR_INTERNAL_CHECK_CONTEXT_PTR (context);
   if (!buffer) {
     return ECBOR_ERR_NULL_INPUT_BUFFER;
   }
@@ -522,6 +503,7 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
       if (additional == ECBOR_ADDITIONAL_INDEFINITE) {
         /* stop code */
         item->size = 1;
+        item->type = ECBOR_TYPE_STOP_CODE;
         return ECBOR_END_OF_INDEFINITE;
       } else if (additional <= ECBOR_ADDITIONAL_1BYTE) {
         ecbor_error_t rc;
@@ -564,12 +546,8 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
 ecbor_error_t
 ecbor_decode (ecbor_decode_context_t *context, ecbor_item_t *item)
 {  
-  if (!context) {
-    return ECBOR_ERR_NULL_CONTEXT;
-  }
-  if (!item) {
-    return ECBOR_ERR_NULL_ITEM;
-  }
+  ECBOR_INTERNAL_CHECK_CONTEXT_PTR (context);
+  ECBOR_INTERNAL_CHECK_ITEM_PTR (item);
 
   if (context->mode != ECBOR_MODE_DECODE
       && context->mode != ECBOR_MODE_DECODE_STREAMED) {
@@ -597,12 +575,9 @@ ecbor_decode_tree (ecbor_decode_context_t *context, ecbor_item_t **root)
   ecbor_error_t rc = ECBOR_OK;
   ecbor_item_t *curr_node = NULL, *new_node = NULL;
   
-  if (!context) {
-    return ECBOR_ERR_NULL_CONTEXT;
-  }
-  if (!root) {
-    return ECBOR_ERR_NULL_ITEM;
-  }
+  ECBOR_INTERNAL_CHECK_CONTEXT_PTR (context);
+  ECBOR_INTERNAL_CHECK_ITEM_PTR (root);
+
   if (context->mode != ECBOR_MODE_DECODE_TREE) {
     return ECBOR_ERR_WRONG_MODE;
   }
