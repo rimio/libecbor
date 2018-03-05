@@ -38,13 +38,13 @@ set (LIB_INCLUDES
 )
 
 set (LIB_SOURCES
-  "${SRC_DIR}/ecbor.c"
-  "${SRC_DIR}/ecbor_encoder.c"
-  "${SRC_DIR}/ecbor_decoder.c"
+  "${SRC_DIR}/libecbor/ecbor.c"
+  "${SRC_DIR}/libecbor/ecbor_encoder.c"
+  "${SRC_DIR}/libecbor/ecbor_decoder.c"
 )
 
 set (DESCRIBE_TOOL_SOURCES
-  "${SRC_DIR}/ecbor_describe.c"
+  "${SRC_DIR}/ecbor-describe/ecbor_describe.c"
 )
 
 # Targets
