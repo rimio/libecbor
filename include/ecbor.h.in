@@ -363,7 +363,7 @@ ecbor_get_int64 (ecbor_item_t *item, int64_t *value);
 
 /* Strings */
 extern ecbor_error_t
-ecbor_get_str (ecbor_item_t *str, char **value);
+ecbor_get_str (ecbor_item_t *str, const char **value);
 
 extern ecbor_error_t
 ecbor_get_str_chunk_count (ecbor_item_t *str, size_t *count);
@@ -373,7 +373,7 @@ ecbor_get_str_chunk (ecbor_item_t *str, size_t index, ecbor_item_t *chunk);
 
 
 extern ecbor_error_t
-ecbor_get_bstr (ecbor_item_t *str, uint8_t **value);
+ecbor_get_bstr (ecbor_item_t *str, const uint8_t **value);
 
 extern ecbor_error_t
 ecbor_get_bstr_chunk_count (ecbor_item_t *str, size_t *count);

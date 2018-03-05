@@ -124,7 +124,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
             }
           }
         } else {
-          char *val;
+          const char *val;
 
           rc = ecbor_get_str (item, &val);
           if (rc != ECBOR_OK) {
@@ -170,7 +170,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
             }
           }
         } else {
-          uint8_t *val;
+          const uint8_t *val;
 
           rc = ecbor_get_bstr (item, &val);
           if (rc != ECBOR_OK) {

@@ -423,7 +423,7 @@ ECBOR_GET_INTEGER_INTERNAL (item, value, ECBOR_TYPE_NINT, int64_t)
 
 
 static __attribute__((noinline)) ecbor_error_t
-ecbor_get_string_internal (ecbor_item_t *str, uint8_t **value,
+ecbor_get_string_internal (ecbor_item_t *str, const uint8_t **value,
                            ecbor_type_t type)
 {
   ECBOR_INTERNAL_CHECK_ITEM_PTR (str);
@@ -502,9 +502,10 @@ ecbor_get_string_chunk_internal (ecbor_item_t *str, size_t index,
 }
 
 ecbor_error_t
-ecbor_get_str (ecbor_item_t *str, char **value)
+ecbor_get_str (ecbor_item_t *str, const char **value)
 {
-  return ecbor_get_string_internal (str, (uint8_t **)value, ECBOR_TYPE_STR);
+  return ecbor_get_string_internal (str, (const uint8_t **)value,
+                                    ECBOR_TYPE_STR);
 }
 
 ecbor_error_t
@@ -520,7 +521,7 @@ ecbor_get_str_chunk (ecbor_item_t *str, size_t index, ecbor_item_t *chunk)
 }
 
 ecbor_error_t
-ecbor_get_bstr (ecbor_item_t *str, uint8_t **value)
+ecbor_get_bstr (ecbor_item_t *str, const uint8_t **value)
 {
   return ecbor_get_string_internal (str, value, ECBOR_TYPE_BSTR);
 }
