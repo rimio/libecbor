@@ -613,6 +613,7 @@ ecbor_decode_tree (ecbor_decode_context_t *context, ecbor_item_t **root)
           rc = ECBOR_OK;
         } else if (rc == ECBOR_END_OF_BUFFER) {
           state = CHECK_END;
+          context->n_items --;
           rc = ECBOR_OK;
         } else if (rc == ECBOR_OK) {
           state = (curr_node ? LINK_NODE : LINK_FIRST_NODE);
@@ -623,6 +624,13 @@ ecbor_decode_tree (ecbor_decode_context_t *context, ecbor_item_t **root)
         break;
 
       case ANALYZE_STOP_CODE:
+        /* must have a node to stop */
+        if (!curr_node) {
+          /* first node was stop code, bad end */
+          rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
+          goto end;
+        }
+        /* up one level, if needed */
         if ((!ECBOR_IS_MAP (curr_node) && !ECBOR_IS_ARRAY (curr_node))
             || ECBOR_IS_DEFINITE (curr_node)
             || (ECBOR_IS_INDEFINITE (curr_node) && last_was_stop_code)) {
@@ -636,6 +644,10 @@ ecbor_decode_tree (ecbor_decode_context_t *context, ecbor_item_t **root)
 
         if ((ECBOR_IS_MAP (curr_node) || ECBOR_IS_ARRAY (curr_node))
             && ECBOR_IS_INDEFINITE (curr_node)) {
+          /* check map case, we need complete key-value pair */
+          if (ECBOR_IS_MAP (curr_node) && curr_node->length % 2 != 0) {
+            return ECBOR_ERR_INVALID_KEY_VALUE_PAIR;
+          }
           /* correct stop code */
           state = CHECK_END_OF_DEFINITE;
           /* set stop code flag; this needs to be reset when curr_node changes */
@@ -721,10 +733,9 @@ ecbor_decode_tree (ecbor_decode_context_t *context, ecbor_item_t **root)
         break;
       
       case CHECK_END:
-        /* check for bad end scenatios */
+        /* check for bad end scenarios */
         if (!curr_node) {
-          /* first node was stop code, bad end */
-          rc = ECBOR_ERR_INVALID_END_OF_BUFFER;
+          /* empty buffer */
           goto end;
         }
         if (curr_node->parent) {
@@ -774,6 +785,8 @@ end:
   /* return root node */
   if (context->n_items > 0) {
     (*root) = &context->items[0];
+  } else {
+    (*root) = NULL;
   }
 
   return rc;
