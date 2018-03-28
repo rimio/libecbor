@@ -68,6 +68,21 @@ echo "Passed / Failed: ${pass}/${fail}"
 total_pass=$(($total_pass + $pass))
 total_fail=$(($total_fail + $fail))
 
+# Edge cases tests
+pass=0
+fail=0
+
+echo ""
+echo "=============================== EDGE CASE =============================="
+for f in files/edge_cases/*.bin; do
+  run_test $f
+done
+echo "========================================================================"
+echo "Passed / Failed: ${pass}/${fail}"
+
+total_pass=$(($total_pass + $pass))
+total_fail=$(($total_fail + $fail))
+
 
 # Final report
 echo ""
