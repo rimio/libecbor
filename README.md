@@ -137,5 +137,39 @@ ecbor_item_t item = ecbor_stop_code ();
 
 but the user must subsequently encode the correct amount of child items (for definite-size arrays and maps) or the stop code (for indefinite arrays and maps).
 
+Once all the items have been encoded, the length of the output buffer can be obtained from `BUFFER_SIZE - context.bytes_left`.
+
 ### Decoder
 
+Just like encoding, the decoding operation must use a decode context (`ecbor_decode_context_t`), usually defined on the stack:
+
+```c
+ecbor_decode_context_t context;
+```
+
+The decoder must be initialized either in *normal* encoding mode
+
+```c
+ecbor_error_t rc = ecbor_initialize_decode (&context, buffer, buffer_size);
+```
+
+in *streamed* mode
+
+```c
+ecbor_error_t rc = ecbor_initialize_decode_streamed (&context, buffer, buffer_size);
+```
+
+or in *tree* mode
+
+```c
+ecbor_item_t item_buffer[MAX_ITEMS];
+ecbor_error_t rc = ecbor_initialize_decode_streamed (&context, buffer, buffer_size, item_buffer, MAX_ITEMS);
+```
+
+where `buffer` is the input `uint8_t*` buffer of size `buffer_size`, and `item_buffer` is an output item buffer.
+
+In *streamed* mode, any decoding API call will parse and retrieve *one* item from the buffer, without children, in the order specified in the buffer. This is a *dumb* but fast mode where absolutely no semantic checking is performed. Linking parents to children is left to the user, hence this mode is recommended only for very simple scenarios.
+
+In *normal* mode, any decoding API call will parse one *whole* item, including it's children, but will *not* store the parsed children. Children can later be retrieved with special API calls, but each of them will trigger a re-parsing of part of the subtree. This mode only uses one instance of *ecbor_item_t*, and has no limit on the size of the parsed CBOR, but may be heavy on CPU usage since no parsing results are cached.
+
+In *tree* mode, any decoding API call will parse one *whole* item, including its children, and all parsing results are cached in `item_buffer`. User must make sure this buffer is sufficiently large to store all items. Subsequent API calls to retrieve children will simply explore the parsed tree.
