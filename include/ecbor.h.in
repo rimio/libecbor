@@ -8,6 +8,10 @@
 #ifndef _ECBOR_H_
 #define _ECBOR_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -463,5 +467,9 @@ ecbor_get_bool (ecbor_item_t *item, uint8_t *value);
   ((i)->type == ECBOR_TYPE_NULL)
 #define ECBOR_IS_UNDEFINED(i) \
   ((i)->type == ECBOR_TYPE_UNDEFINED)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
