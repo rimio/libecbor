@@ -282,7 +282,7 @@ ecbor_error_t rc = ecbor_get_tag_item_ptr (&tag, &item_ptr);
 
 **IMPORTANT:** Note that the `*_ptr` versions of the APIs work only in *tree* mode.
 
-TO retrieve the payload of definite strings and binary strings:
+To retrieve the payload of definite strings and binary strings:
 
 ```c
 const char *c_str = NULL;
