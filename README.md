@@ -147,7 +147,7 @@ Just like encoding, the decoding operation must use a decode context (`ecbor_dec
 ecbor_decode_context_t context;
 ```
 
-The decoder must be initialized either in *normal* encoding mode
+The decoder must be initialized either in *normal* decoding mode
 
 ```c
 ecbor_error_t rc = ecbor_initialize_decode (&context, buffer, buffer_size);
@@ -173,3 +173,193 @@ In *streamed* mode, any decoding API call will parse and retrieve *one* item fro
 In *normal* mode, any decoding API call will parse one *whole* item, including it's children, but will *not* store the parsed children. Children can later be retrieved with special API calls, but each of them will trigger a re-parsing of part of the subtree. This mode only uses one instance of *ecbor_item_t*, and has no limit on the size of the parsed CBOR, but may be heavy on CPU usage since no parsing results are cached.
 
 In *tree* mode, any decoding API call will parse one *whole* item, including its children, and all parsing results are cached in `item_buffer`. User must make sure this buffer is sufficiently large to store all items. Subsequent API calls to retrieve children will simply explore the parsed tree.
+
+**IMPORTANT:** String items will *not* copy the payload from the original CBOR buffer. Moreover, in *normal* mode children are being re-parsed from the CBOR buffer as well. Do *not* destroy this buffer until *all* manipulation on the CBOR items has been finished.
+
+In *normal* and *streamed* mode, one item can be decoded with
+
+```c
+ecbor_item_t item;
+ecbor_error_t rc = ecbor_decode (&context, &item);
+```
+
+while in *tree* mode, the root item can be decoded with
+
+```c
+ecbor_item_t *root = NULL;
+ecbor_error_t rc = ecbor_decode_tree (&context, &root);
+```
+
+After the call, `root` will point to the root item from the `item_buffer`.
+
+For item manipulation there are two alternative APIs that can be used.
+
+### Decoder - strict API
+
+To retrieve the type of an item:
+
+```c
+ecbor_type_t type = ecbor_get_type (&item);
+```
+
+To retrieve the values of numerics and booleans:
+
+```c
+uint8_t val;
+ecbor_error_t rc = ecbor_get_uint8 (item, &val);
+
+uint16_t val;
+ecbor_error_t rc = ecbor_get_uint16 (item, &val);
+
+uint32_t val;
+ecbor_error_t rc = ecbor_get_uint32 (item, &val);
+
+uint64_t val;
+ecbor_error_t rc = ecbor_get_uint64 (item, &val);
+
+
+int8_t val;
+ecbor_error_t rc = ecbor_get_int8 (item, &val);
+
+int16_t val;
+ecbor_error_t rc = ecbor_get_int16 (item, &val);
+
+int32_t val;
+ecbor_error_t rc = ecbor_get_int32 (item, &val);
+
+int64_t val;
+ecbor_error_t rc = ecbor_get_int64 (item, &val);
+
+
+float val;
+ecbor_error_t rc = ecbor_get_fp32 (item, &val);
+
+double val;
+ecbor_error_t rc = ecbor_get_fp64 (item, &val);
+
+
+uint8_t val;
+ecbor_error_t rc = ecbor_get_bool (item, &val);
+```
+
+To retrieve the *tag value* of a tag item:
+
+```c
+uint64_t tag_val;
+ecbor_error_t rc = ecbor_get_tag_value (&tag_item, &tag_val);
+```
+
+To retrieve the length of a binary string, string, array or map:
+
+```c
+size_t length = 0;
+ecbor_error_t rc = ecbor_get_length (&item, &length);
+```
+
+To retrieve a child of a tag, array or map:
+
+```c
+ecbor_item_t arr_item;
+ecbor_error_t rc = ecbor_get_array_item (&array, index, &arr_item);
+
+ecbor_item_t *arr_item_ptr = NULL;
+ecbor_error_t rc = ecbor_get_array_item_ptr (&array, index, &arr_item_ptr);
+
+
+ecbor_item_t key, val;
+ecbor_error_t rc = ecbor_get_map_item (&map, index, &key, &val);
+
+ecbor_item_t *key_ptr = NULL, *val_ptr = NULL;
+ecbor_error_t rc = ecbor_get_map_item_ptr (&map, index, &key_ptr, &val_ptr);
+
+
+ecbor_item_t item;
+ecbor_error_t rc = ecbor_get_tag_item (&tag, &item);
+
+ecbor_item_t *item_ptr = NULL;
+ecbor_error_t rc = ecbor_get_tag_item_ptr (&tag, &item_ptr);
+```
+
+**IMPORTANT:** Note that the `*_ptr` versions of the APIs work only in *tree* mode.
+
+TO retrieve the payload of definite strings and binary strings:
+
+```c
+const char *c_str = NULL;
+ecbor_error_t rc = ecbor_get_str (&str_item, &c_str);
+
+const uint8_t *buffer = NULL;
+ecbor_error_t rc = ecbor_get_bstr (&bstr_item, &buffer);
+```
+
+For *indefinite* strings and binary strings, each chunk must be parsed individually (a chunk is a child item of the same type, but with *definite* length):
+
+```c
+size_t chunk_count;
+ecbor_error_t rc = ecbor_get_str_chunk_count (&str_item, &chunk_count);
+
+ecbor_item_t chunk;
+ecbor_error_t rc = ecbor_get_str_chunk (&str_item, index, &chunk);
+
+
+size_t chunk_count;
+ecbor_error_t rc = ecbor_get_bstr_chunk_count (&bstr_item, &chunk_count);
+
+ecbor_item_t chunk;
+ecbor_error_t rc = ecbor_get_bstr_chunk (&bstr_item, index, &chunk);
+```
+
+### Decoder - fast API
+
+The following macros help to identify the type of the item:
+
+```c
+ecbor_item_t item;
+
+ecbor_type_t type = ECBOR_GET_TYPE(&item)
+
+ECBOR_IS_INDEFINITE(&item)
+ECBOR_IS_DEFINITE(&item)
+
+ECBOR_IS_NINT(&item)
+ECBOR_IS_UINT(&item)
+ECBOR_IS_INTEGER(&item)
+ECBOR_IS_BSTR(&item)
+ECBOR_IS_STR(&item)
+ECBOR_IS_ARRAY(&item)
+ECBOR_IS_MAP(&item)
+ECBOR_IS_TAG(&item)
+ECBOR_IS_FP32(&item)
+ECBOR_IS_FLOAT(&item)
+ECBOR_IS_FP64(&item)
+ECBOR_IS_DOUBLE(&item)
+ECBOR_IS_BOOL(&item)
+ECBOR_IS_NULL(&item)
+ECBOR_IS_UNDEFINED(&item)
+```
+
+In order to retrieve the value:
+
+```c
+ecbor_item_t item;
+
+int64_t val = ECBOR_GET_INT(&item)
+uint64_t val = ECBOR_GET_UINT(&item)
+
+const char *c_str = ECBOR_GET_STRING(&item)
+
+float val = ECBOR_GET_FP32(&item)
+doube val = ECBOR_GET_FP64(&item)
+
+uint8_t bool_value = ECBOR_GET_BOOL(&item)
+
+uint64_t tag_value = ECBOR_GET_TAG_VALUE(&item)
+ecbor_item_t tag_item = ECBOR_GET_TAG_ITEM(&item)
+```
+
+And finally, in order to retrieve the length of arrays, maps, strings:
+
+```c
+ecbor_item_t item;
+size_t len = ECBOR_GET_LENGTH(&item)
+```
