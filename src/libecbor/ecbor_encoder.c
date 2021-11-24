@@ -239,7 +239,7 @@ ecbor_encode (ecbor_encode_context_t *context, ecbor_item_t *item)
           size_t remaining = item->length;
           ecbor_item_t *current = item->child;
           
-          while (remaining) {
+          while (remaining--) {
             /* write item */
             if (!current) {
               return ECBOR_ERR_NULL_ITEM;
