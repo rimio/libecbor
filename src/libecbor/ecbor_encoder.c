@@ -563,25 +563,20 @@ ecbor_map (ecbor_item_t *map, ecbor_item_t *keys, ecbor_item_t *values,
 
   map->is_indefinite = false;
   map->type = ECBOR_TYPE_MAP;
-  map->length = length;
+  map->length = length * 2;
 
   if (length > 0) {
     ECBOR_INTERNAL_CHECK_ITEM_PTR (keys);
     ECBOR_INTERNAL_CHECK_ITEM_PTR (values);
 
     map->child = keys;
-    keys->parent = map;
-    keys->next = values;
-    values->parent = map;
-    keys ++;
-    values ++;
-
-    for (i = 1; i < length; i ++) {
-      values->next = (keys + 1);
-      keys ++;
-      keys->next = (values + 1);
-      values ++;
+    for (i = 0; i < length; i ++, keys ++, values ++) {
+      keys->parent = map;
+      values->parent = map;
+      keys->next = values;
+      values->next = keys + 1;
     }
+    values->next = NULL;
   }
 
   return ECBOR_OK;
