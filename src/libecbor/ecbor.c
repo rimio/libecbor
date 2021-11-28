@@ -593,9 +593,13 @@ ecbor_memcpy (void *dest, void *src, size_t num)
   while (num > 4) {
     *((uint32_t *) dest) = *((uint32_t *) src);
     num -= 4;
+    dest += 4;
+    src += 4;
   }
   while (num) {
     *((uint8_t *) dest) = *((uint8_t *) src);
     num --;
+    dest ++;
+    src ++;
   }
 }
