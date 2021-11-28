@@ -333,7 +333,7 @@ ecbor_encode (ecbor_encode_context_t *context, ecbor_item_t *item)
 
         /* write header */
         rc = ecbor_encode_header (context, ECBOR_TYPE_SPECIAL,
-                                  ECBOR_ADDITIONAL_4BYTE);
+                                  ECBOR_ADDITIONAL_8BYTE);
         if (rc != ECBOR_OK) {
           return rc;
         }
