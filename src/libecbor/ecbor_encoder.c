@@ -404,7 +404,7 @@ ecbor_uint (uint64_t value)
 }
 
 ecbor_item_t
-ecbor_bstr (uint8_t *bstr, size_t length)
+ecbor_bstr (const uint8_t *bstr, size_t length)
 {
   ecbor_item_t r = null_item;
   r.type = ECBOR_TYPE_BSTR;
@@ -414,7 +414,7 @@ ecbor_bstr (uint8_t *bstr, size_t length)
 }
 
 ecbor_item_t
-ecbor_str (char *str, size_t length)
+ecbor_str (const char *str, size_t length)
 {
   ecbor_item_t r = null_item;
   r.type = ECBOR_TYPE_STR;
