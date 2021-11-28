@@ -395,11 +395,11 @@ ecbor_int (int64_t value)
 }
 
 ecbor_item_t
-ecbor_uint (int64_t value)
+ecbor_uint (uint64_t value)
 {
   ecbor_item_t r = null_item;
   r.type = ECBOR_TYPE_UINT;
-  r.value.uinteger = (uint64_t) value;
+  r.value.uinteger = value;
   return r;
 }
 

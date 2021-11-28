@@ -260,7 +260,7 @@ extern ecbor_item_t
 ecbor_int (int64_t value);
 
 extern ecbor_item_t
-ecbor_uint (int64_t value);
+ecbor_uint (uint64_t value);
 
 extern ecbor_item_t
 ecbor_bstr (uint8_t *bstr, size_t length);
