@@ -3,6 +3,12 @@ CMakeCache.txt
 CMakeFiles
 Makefile
 cmake_install.cmake
+compile_commands.json
+
+# Unit tests
+CTestTestfile.cmake
+Testing
+unittest*.cmake
 
 # Prerequisites
 *.d

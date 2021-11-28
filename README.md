@@ -19,11 +19,29 @@ This will generate the following files:
 
 ## Testing
 
-Unit tests can be run by performing:
+Functional tests can be run with:
 
 ```
 cd test/
 ./runtests.sh
+```
+
+Unit tests depend on `gtest` and must be explicitly built:
+
+```
+cmake . -DTESTING=ON
+```
+
+They can be run either via CMake:
+
+```
+ctest
+```
+
+or by directly running the unit tests executable, which provides more verbose output:
+
+```
+./bin/unittest
 ```
 
 ## Installation
