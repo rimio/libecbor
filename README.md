@@ -137,7 +137,13 @@ ecbor_item_t item = ecbor_stop_code ();
 
 but the user must subsequently encode the correct amount of child items (for definite-size arrays and maps) or the stop code (for indefinite arrays and maps).
 
-Once all the items have been encoded, the length of the output buffer can be obtained from `BUFFER_SIZE - context.bytes_left`.
+Once all the items have been encoded, the length of the output buffer can be obtained either by calling 
+```c
+size_t sz;
+ecbor_error_t rc = ecbor_get_encoded_buffer_size(&context, &sz);
+```
+
+or by using the `ECBOR_GET_ENCODED_BUFFER_SIZE` macro.
 
 ### Decoder
 
