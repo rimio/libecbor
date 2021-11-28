@@ -407,6 +407,7 @@ ecbor_item_t
 ecbor_bstr (const uint8_t *bstr, size_t length)
 {
   ecbor_item_t r = null_item;
+  r.is_indefinite = false;
   r.type = ECBOR_TYPE_BSTR;
   r.value.string.str = bstr;
   r.length = length;
@@ -417,6 +418,7 @@ ecbor_item_t
 ecbor_str (const char *str, size_t length)
 {
   ecbor_item_t r = null_item;
+  r.is_indefinite = false;
   r.type = ECBOR_TYPE_STR;
   r.value.string.str = (uint8_t *)str;
   r.length = length;
@@ -532,6 +534,7 @@ ecbor_array (ecbor_item_t *array, ecbor_item_t *items, size_t length)
   }
   
   array->type = ECBOR_TYPE_ARRAY;
+  array->is_indefinite = false;
   array->length = length;
   array->child = items;
   
@@ -558,6 +561,7 @@ ecbor_map (ecbor_item_t *map, ecbor_item_t *keys, ecbor_item_t *values,
     return ECBOR_ERR_NULL_MAP;
   }
 
+  map->is_indefinite = false;
   map->type = ECBOR_TYPE_MAP;
   map->length = length;
 
