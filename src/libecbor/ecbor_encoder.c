@@ -18,6 +18,7 @@ ecbor_initialize_encode (ecbor_encode_context_t *context,
     return ECBOR_ERR_NULL_OUTPUT_BUFFER;
   }
   
+  context->base = buffer;
   context->out_position = buffer;
   context->bytes_left = buffer_size;
   context->mode = ECBOR_MODE_ENCODE;
@@ -35,10 +36,31 @@ ecbor_initialize_encode_streamed (ecbor_encode_context_t *context,
     return ECBOR_ERR_NULL_OUTPUT_BUFFER;
   }
   
+  context->base = buffer;
   context->out_position = buffer;
   context->bytes_left = buffer_size;
   context->mode = ECBOR_MODE_ENCODE_STREAMED;
   
+  return ECBOR_OK;
+}
+
+
+ecbor_error_t
+ecbor_get_encoded_buffer_size(const ecbor_encode_context_t *context, size_t *out_size)
+{
+  /* check parameters */
+  if (context == NULL) {
+    return ECBOR_ERR_NULL_CONTEXT;
+  }
+  if (out_size == NULL) {
+    return ECBOR_ERR_NULL_PARAMETER;
+  }
+  /* check sanity */
+  if (context->base > context->out_position) {
+    return ECBOR_ERR_INVALID_END_OF_BUFFER;
+  }
+  /* return length */
+  *out_size = context->out_position - context->base;
   return ECBOR_OK;
 }
 

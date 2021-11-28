@@ -40,6 +40,7 @@ typedef enum {
   ECBOR_ERR_NULL_VALUE                      = 14,
   ECBOR_ERR_NULL_ARRAY                      = 15,
   ECBOR_ERR_NULL_MAP                        = 16,
+  ECBOR_ERR_NULL_PARAMETER                  = 17,
   
   ECBOR_ERR_NULL_ITEM                       = 20,
   
@@ -169,6 +170,9 @@ typedef enum {
 typedef struct {
   /* mode of operation for this context */
   ecbor_mode_t mode;
+
+  /* output buffer base pointer */
+  uint8_t *base;
   
   /* output buffer position */
   uint8_t *out_position;
@@ -234,6 +238,9 @@ ecbor_initialize_decode_tree (ecbor_decode_context_t *context,
  */
 extern ecbor_error_t
 ecbor_encode (ecbor_encode_context_t *context, ecbor_item_t *item);
+
+extern ecbor_error_t
+ecbor_get_encoded_buffer_size(const ecbor_encode_context_t *context, size_t *out_size);
 
 /*
  * Decoding routines
@@ -407,6 +414,8 @@ ecbor_get_bool (ecbor_item_t *item, uint8_t *value);
 /*
  * Inline API
  */
+#define ECBOR_GET_ENCODED_BUFFER_SIZE(c) \
+  (size_t)((c)->out_position - (c)->base)
 #define ECBOR_GET_TYPE(i) \
   ((i)->type)
 #define ECBOR_GET_LENGTH(i) \
