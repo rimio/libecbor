@@ -62,7 +62,7 @@ print_ecbor_item (ecbor_item_t *item, unsigned int level, char *prefix)
   unsigned int i;
 
   for(i = 0; i < level * 2; i ++) putchar(' ');
-  printf (prefix);
+  printf ("%s", prefix);
 
   mt = ecbor_get_type (item);
   switch (mt) {
