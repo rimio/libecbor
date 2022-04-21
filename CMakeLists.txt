@@ -70,14 +70,14 @@ set_target_properties (${PROJECT_NAME}_static PROPERTIES OUTPUT_NAME ${PROJECT_N
 
 target_compile_options (${PROJECT_NAME}_static PRIVATE -nostdlib)
 
-install (TARGETS ${PROJECT_NAME}_shared LIBRARY DESTINATION lib PUBLIC_HEADER DESTINATION include)
-install (TARGETS ${PROJECT_NAME}_static ARCHIVE DESTINATION lib PUBLIC_HEADER DESTINATION include)
+install (TARGETS ${PROJECT_NAME}_shared)
+install (TARGETS ${PROJECT_NAME}_static)
 
 # Tool Targets
 if (BUILD_DESCRIBE_TOOL)
   add_executable (${PROJECT_NAME}-describe ${DESCRIBE_TOOL_SOURCES})
   target_link_libraries (${PROJECT_NAME}-describe ${PROJECT_NAME}_shared)
-  install (TARGETS ${PROJECT_NAME}-describe DESTINATION bin)
+  install (TARGETS ${PROJECT_NAME}-describe)
 endif (BUILD_DESCRIBE_TOOL)
 
 # Test targets
