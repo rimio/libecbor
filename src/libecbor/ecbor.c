@@ -123,8 +123,8 @@ ecbor_fp64_to_big_endian (double value)
 ecbor_type_t
 ecbor_get_type (ecbor_item_t *item)
 {
-  ECBOR_INTERNAL_CHECK_ITEM_PTR (item);
-  if (item->type < ECBOR_TYPE_FIRST
+  if (item == NULL
+      || item->type < ECBOR_TYPE_FIRST
       || item->type > ECBOR_TYPE_LAST) {
     return ECBOR_TYPE_NONE;
   }
@@ -593,13 +593,13 @@ ecbor_memcpy (void *dest, void *src, size_t num)
   while (num > 4) {
     *((uint32_t *) dest) = *((uint32_t *) src);
     num -= 4;
-    dest += 4;
-    src += 4;
+    dest = ((uint32_t *)dest) + 1;
+    src = ((uint32_t *)src) + 1;
   }
   while (num) {
     *((uint8_t *) dest) = *((uint8_t *) src);
     num --;
-    dest ++;
-    src ++;
+    dest = ((uint8_t *)dest) + 1;
+    src = ((uint8_t *)src) + 1;
   }
 }

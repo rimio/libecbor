@@ -41,7 +41,7 @@ enum {
 };
 
 /* Static item, for various initializations */
-static ecbor_item_t null_item = {
+static const ecbor_item_t null_item = {
   .type = ECBOR_TYPE_NONE,
   .value = {
     .tag = {

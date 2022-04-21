@@ -50,7 +50,7 @@ void run_encoder_test_normal(std::function<void(ecbor_encode_context_t*)> callba
 
 TEST(encoder, noop)
 {
-    run_encoder_test_normal([](ecbor_encode_context_t* ctx) -> void {
+    run_encoder_test_normal([](ecbor_encode_context_t*) -> void {
             },
             {});
 }
