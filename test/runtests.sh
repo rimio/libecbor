@@ -35,6 +35,7 @@ run_test() {
     machine_indented=$(printf '%-67s' "$test_name")
     machine_indented=${machine_indented// /.}
     printf "%s %s\n" "$machine_indented" "$status"
+    diff $answer_file $result_file
   done
 }
 
@@ -45,6 +46,21 @@ fail=0
 echo ""
 echo "============================== APPENDIX A =============================="
 for f in files/appendix_a/*.bin; do
+  run_test $f
+done
+echo "========================================================================"
+echo "Passed / Failed: ${pass}/${fail}"
+
+total_pass=$(($total_pass + $pass))
+total_fail=$(($total_fail + $fail))
+
+# Test cases from issues
+pass=0
+fail=0
+
+echo ""
+echo "============================= FROM ISSUES =============================="
+for f in files/issues/*.bin; do
   run_test $f
 done
 echo "========================================================================"

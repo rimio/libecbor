@@ -289,8 +289,6 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
      */
     case ECBOR_TYPE_BSTR:
     case ECBOR_TYPE_STR:
-      /* keep buffer pointer from current pointer */
-      item->value.string.str = context->in_position;
       item->value.string.n_chunks = 0;
 
       /* discriminate between definite and indefinite strings; we do not treat
@@ -317,19 +315,17 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
           /* read next chunk */
           rc = ecbor_decode_next_internal (context, &chunk, true,
                                            item->type);
-          if (rc != ECBOR_OK) {
-            if (rc == ECBOR_END_OF_INDEFINITE) {
-              /* stop code found, break from loop */
-              item->size += chunk.size; /* meter stop code as well */
-              break;
-            } else if (rc == ECBOR_END_OF_BUFFER) {
-              /* treat a valid end of buffer as invalid since we did not yet
-                 find the stop code */
-              return ECBOR_ERR_INVALID_END_OF_BUFFER;
-            } else if (rc != ECBOR_OK) {
-              /* other error */
-              return rc;
-            }
+          if (rc == ECBOR_END_OF_INDEFINITE) {
+            /* stop code found, break from loop */
+            item->size += chunk.size; /* meter stop code as well */
+            break;
+          } else if (rc == ECBOR_END_OF_BUFFER) {
+            /* treat a valid end of buffer as invalid since we did not yet
+               find the stop code */
+            return ECBOR_ERR_INVALID_END_OF_BUFFER;
+          } else if (rc != ECBOR_OK) {
+            /* other error */
+            return rc;
           }
 
           /* add chunk size and length to item */
@@ -345,6 +341,9 @@ ecbor_decode_next_internal (ecbor_decode_context_t *context,
         if (rc != ECBOR_OK) {
           return rc;
         }
+
+        /* keep first position in string */
+        item->value.string.str = context->in_position;
         /* if sizeof(size_t) < sizeof(uint64_t), and payload is >4GB, we're
            fucked */
         item->length = len;
