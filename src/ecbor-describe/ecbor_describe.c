@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <string.h>
-#include <malloc.h>
 #include <ecbor.h>
 
 /*
