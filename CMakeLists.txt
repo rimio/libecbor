@@ -5,7 +5,7 @@ project (ecbor LANGUAGES C CXX)
 # Version
 set (VERSION_MAJOR 1)
 set (VERSION_MINOR 0)
-set (VERSION_PATCH 2)
+set (VERSION_PATCH 3)
 
 # Options
 option (BUILD_DESCRIBE_TOOL "build ecbor-describe" ON)
